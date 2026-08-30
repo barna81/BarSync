@@ -1,0 +1,27 @@
+Ref,Component,Value,Qty,Footprint/Type,Note
+U1,6N139,-,1,DIP-8 socketed,Optocoupler MIDI-IN
+U2,SN7406N,-,1,DIP-14 socketed,Hex inverter 2 gates in series
+D1,1N4148,-,1,DO-35 horizontal,MIDI-IN series diode
+R1,Resistor,220R 1/4W,1,Axial horizontal,MIDI-IN series resistor
+R2,Resistor,4k7 1/4W,1,Axial horizontal,Vb bias resistor
+R3,Resistor,220R 1/4W,1,Axial horizontal,Pull-up optocoupler output to +3V3 (not +5V)
+R4,Resistor,220R 1/4W,1,Axial horizontal,MIDI-THRU pin 4 current loop
+C1,Capacitor,100nF X7R,1,Radial 5mm pitch,Decoupling capacitor U1
+C2,Capacitor,100nF X7R,1,Radial 5mm pitch,Decoupling capacitor U2
+J1,Header,2-pin 2.54mm,1,Vertical,Board header MIDI-IN
+J2,Header,3-pin 2.54mm,1,Vertical,Board header MIDI-THRU
+J3,Header,2-pin 2.54mm,1,Vertical,Time signature button
+J4,Header,2-pin 2.54mm,1,Vertical,Divisor button
+J5,Header,2-pin 2.54mm,1,Vertical,Reset button
+J6,Header,7-pin 2.54mm,1,Vertical,Board header display
+A1,ESP32 female headers,2x 15-pin 2.54mm,2,DOIT_ESP32_DEVKIT_30Pins,ESP32 board plugs in
+-,DIP-8 socket,-,1,-,For U1
+-,DIP-14 socket,-,1,-,For U2
+-,Mounting hole M2,2.2mm,4,MountingHole,Mechanical only
+-,ESP32 dev board,WROOM-32 DOIT-30Pin,1,Plugs in
+-,OLED display,SSD1309 2.42in 128x64 SPI,1,-,Via 7-pin cable to J6
+-,DIN-5 panel-mount socket,Full metal recommended,2,-,MIDI-IN + MIDI-THRU
+-,Button,Tactile switch or foot switch,3,-,Time sig/divisor/reset
+-,Dupont cable FF 2-pin,-,4,-,J1 + J3 + J4 + J5
+-,Dupont cable FF 3-pin,-,1,-,J2
+-,Dupont cable FF 7-pin,-,1,-,J6
