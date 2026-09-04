@@ -11,18 +11,22 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (as of 2026-08-25)
+## Status (as of 2026-09-04)
 
 BarSync - Desktop version (this device)
-- ✅ Schematic, PCB layout (hardware rev. 1.1), and firmware finished and tested
-- ✅ PCBs have been ordered
-- 🔜 A matching 3D-printable enclosure is in development
-- 🔜 A solder-it-yourself kit is being considered, depending on interest
+- Current firmware: 1.2.1   
+    New features: settings menu structure completely reworked, MIDI Clock Analyzer completely reworked   
+    Bugfixes: waking from standby with an already-running clock improved, short button presses now detected reliably, MIDI tick timing corrected (no more render-induced jitter)
+- Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
+- PCBs for self-assembly have arrived
+- A matching 3D-printable enclosure is available here [`enclosure`](enclosure/)
+- A solder-it-yourself kit is being considered, depending on interest
 
-BarSync - Eurorack version (in development)
-- ✅ Code about 80% done
-- 🔜 Schematic and PCB layout to follow
-- 🔜 3D-printable Eurorack frame is in development
+BarSync - Eurorack version (in development, not yet on GitHub)
+- Code finished
+- PCB layout finished and ordered
+- Schematic and PCB layout to follow
+- 3D-printable Eurorack frame is in development
 
 *(Interested in the kit or the Eurorack version? Open an issue in this repo or get in touch.)*
 
@@ -31,7 +35,7 @@ BarSync - Eurorack version (in development)
 
 
 ## What is this?
-Never missthe drop...
+Never miss the drop...
 
 BarSync keeps you locked into your track's arrangement — live or in the studio. Know exactly where you stand in the bar count, so drops, breaks and builds never catch you off guard.
 
@@ -85,6 +89,7 @@ Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf), PCB layout, an
 [`hardware/`](hardware/).
 Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)
 Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)
+3D-printable enclosure available here: [`enclosure`](enclosure/)
 
 
 ## Key Hardware
