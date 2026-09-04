@@ -99,8 +99,8 @@ MIDI-IN (DIN-5, Pin 5) ───────────────────
 | Function            | ESP32 Pin | GPIO | Wiring                          |
 |----------------------|-----------|------|----------------------------------|
 | Toggle divisor       | GPIO33    | 33   | Button to GND, INPUT_PULLUP     |
-| Toggle time signature| GPIO32    | 32   | Button to GND, INPUT_PULLUP     |
-| Reset (short/long)   | GPIO25    | 25   | Button to GND, INPUT_PULLUP     |
+| Custom button (freely assignable, currently: SET 1.1)| GPIO32    | 32   | Button to GND, INPUT_PULLUP     |
+| Reset (short/medium) | GPIO25    | 25   | Button to GND, INPUT_PULLUP     |
 
 All three buttons (normally-open): one pin to the listed GPIO, the other
 pin to GND. (Internal pull-ups are enabled in the code (`INPUT_PULLUP`),
@@ -121,7 +121,7 @@ no external resistors needed.)
 | 21   | OLED DC               |
 | 23   | OLED MOSI             |
 | 25   | Reset button          |
-| 32   | Time signature button |
+| 32   | Custom button (currently: SET 1.1) |
 | 33   | Divisor button        |
 | 3V3  | Display VCC           |
 | GND  | Display GND, optocoupler GND (common ground!) |

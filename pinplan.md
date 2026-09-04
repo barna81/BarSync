@@ -100,8 +100,8 @@ MIDI-IN (DIN-5, Pin 5) ───────────────────
 | Funktion         | ESP32 Pin | GPIO | Beschaltung                     |
 |-------------------|-----------|------|----------------------------------|
 | Divisor umschalten | GPIO33  | 33   | Taster gegen GND, INPUT_PULLUP  |
-| Taktart umschalten | GPIO32  | 32   | Taster gegen GND, INPUT_PULLUP  |
-| Reset (kurz/lang)  | GPIO25  | 25   | Taster gegen GND, INPUT_PULLUP  |
+| Custom-Taster (frei belegbar, aktuell: SET 1.1) | GPIO32  | 32   | Taster gegen GND, INPUT_PULLUP  |
+| Reset (kurz/mittel) | GPIO25  | 25   | Taster gegen GND, INPUT_PULLUP  |
 
 Alle drei Taster (Schließer): ein Pin an den genannten GPIO, der andere Pin an GND.
 (Interne Pull-ups werden sind im Code aktiviert (`INPUT_PULLUP`), keine externen
@@ -122,7 +122,7 @@ Widerstände nötig.)
 | 21   | OLED DC              |
 | 23   | OLED MOSI            |
 | 25   | Taster Reset         |
-| 32   | Taster Taktart       |
+| 32   | Custom-Taster (aktuell: SET 1.1) |
 | 33   | Taster Divisor       |
 | 3V3  | Display VCC          |
 | GND  | Display GND, Optokoppler GND (gemeinsame Masse!) |

@@ -23,7 +23,7 @@ every footprint, and every net connection individually verified).
 | C2 | Capacitor | 100nF, X7R | 1 | Radial, 5mm pitch | Decoupling capacitor for U2 (Vcc/GND) |
 | J1 | Header | 2-pin, 2.54mm | 1 | Vertical | Board header → MIDI-IN socket (cable) |
 | J2 | Header | 3-pin, 2.54mm | 1 | Vertical | Board header → MIDI-THRU socket (cable) |
-| J3 | Header | 2-pin, 2.54mm | 1 | Vertical | Time signature button |
+| J3 | Header | 2-pin, 2.54mm | 1 | Vertical | Custom Switch |
 | J4 | Header | 2-pin, 2.54mm | 1 | Vertical | Divisor button |
 | J5 | Header | 2-pin, 2.54mm | 1 | Vertical | Reset button |
 | J6 | Header | 7-pin, 2.54mm | 1 | Vertical | Board header → Display (cable) |
@@ -43,7 +43,7 @@ every footprint, and every net connection individually verified).
 | ESP32 dev board (WROOM-32, DOIT 30-pin layout) | 1 | Plugs into the female headers (A1) |
 | OLED display SSD1309, 2.42", 128×64, SPI | 1 | Via 7-pin Dupont cable to J6 |
 | DIN-5 panel-mount socket | 2 | MIDI-IN + MIDI-THRU |
-| Button (tactile switch or foot switch) | 3 | Time signature, divisor, reset |
+| Button (tactile switch or foot switch) | 3 | Custom, divisor, reset |
 | Dupont cable female-female, 2-pin | 4 | J1 (MIDI-IN) + J3/J4/J5 (buttons) |
 | Dupont cable female-female, 3-pin | 1 | J2 (MIDI-THRU) |
 | Dupont cable female-female, 7-pin | 1 | J6 (display) |

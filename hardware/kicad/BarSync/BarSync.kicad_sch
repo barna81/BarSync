@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "BarSync - MIDI Clock Bar Counter & Visualizer")
-		(date "2026-08-21")
-		(rev "1.1")
+		(date "2026-09-02")
+		(rev "1.2")
 	)
 	(lib_symbols
 		(symbol "Conn_01x02_Socket_1"
@@ -5878,7 +5878,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TimeSig Switch"
+		(property "Value" "Custom Switch"
 			(at 241.046 112.522 0)
 			(show_name no)
 			(do_not_autoplace no)

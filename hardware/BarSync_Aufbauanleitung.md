@@ -61,7 +61,7 @@ Reihenfolge: erst die flachsten/robustesten Bauteile, dann die empfindlicheren.
 
 15. Display sollte bei Start den Boot-Screen zeigen ("BarSync")
 16. MIDI-Quelle anschließen, Clock starten → Anzeige sollte auf "RUN" wechseln
-17. Alle drei Taster einzeln durchtesten (Taktart wechseln, Divisor wechseln, Reset auslösen)
+17. Alle drei Taster einzeln durchtesten (Custom-Taster auslösen — aktuell: SET 1.1 —, Divisor wechseln, Reset auslösen)
 18. Erst wenn alles funktioniert: ins Gehäuse einbauen
 
 ---
@@ -72,7 +72,7 @@ Reihenfolge: erst die flachsten/robustesten Bauteile, dann die empfindlicheren.
 |---|---|
 | Display bleibt dunkel | SPI-Verkabelung an J6 prüfen (Pin-Reihenfolge), Kontrast im Setup-Menü prüfen |
 | Kein MIDI-Signal erkannt | Optokoppler-Orientierung (U1) und D1-Polarität prüfen |
-| Taster reagieren nicht/falsch | Zuordnung prüfen: J3=Taktart(GPIO32), J4=Divisor(GPIO33), J5=Reset(GPIO25) |
+| Taster reagieren nicht/falsch | Zuordnung prüfen: J3=Custom(GPIO32), J4=Divisor(GPIO33), J5=Reset(GPIO25) |
 
 ---
 

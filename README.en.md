@@ -45,7 +45,7 @@ BarSync supports you during your live performance. During a show your hands are 
 - Divisor progress bar (x1 to x128 bars) — overall area stays constant,
   tile size adapts accordingly
 - 5 selectable time signatures (2/4, 3/4, 4/4, 5/4, 7/8)
-- Three-stage reset (short/medium/long, quantized to bar or cycle end)
+- Reset button: two stages (short = bar end, medium/hold = cycle end) — each independently configurable whether it also resets the elapsed play time (default: yes). Plus a standalone "SET 1.1" function (default custom-button role) to instantly re-anchor the beat pattern, either quantized (rounded to the nearest beat) or instant (raw tick) — selectable in the settings menu
 - Built-in MIDI analyzer (jitter, interval, BPM range) right on the device
 - Nudge mode for manually compensating clock phase drift
 - MIDI-Thru
@@ -60,12 +60,14 @@ Quick overview — full guide in
 
 | Button | Function |
 |---|---|
-| Time Sig (short) | Next time signature |
-| Time Sig (hold 1s) | Toggle MIDI analyzer |
+| Custom button (short) | SET 1.1 (re-anchor beat pattern)* |
+| Custom button (hold 1s) | Toggle MIDI analyzer* |
 | Divisor (short) | Next divisor value |
-| Reset (short/medium/long) | Reset stage 1/2/3 |
-| Time Sig + Divisor together | Toggle nudge mode |
+| Reset (short/medium) | Reset stage 1/2 |
+| Custom button + Divisor together | Toggle nudge mode* |
 | Hold Reset 1s at boot | Settings menu |
+
+*The custom button is freely assignable — the functions shown here reflect the current firmware default.
 
 
 ## Cool! How do I get one?
@@ -89,7 +91,7 @@ Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufb
 
 - ESP32 dev board (30-pin DOIT layout)
 - SSD1309 OLED, 2.42", 128×64, SPI
-- 3 buttons (time signature, divisor, reset)
+- 3 buttons (custom, divisor, reset)
 
 
 ## Flashing the Firmware
