@@ -11,18 +11,22 @@ einem 128×64-OLED-Display anzeigt.
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 25.08.2026)
+## Status (Stand 04.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- ✅ Schaltplan, PCB-Layout (Hardware-Rev. 1.1) und Firmware fertig und getestet
-- ✅ Platinen sind bestellt
-- 🔜 Ein passendes, 3D-druckbares Gehäuse ist in Entwicklung
-- 🔜 Bausatz zum Selbstlöten ist bei entsprechendem Interesse angedacht
+- Aktueller FW Stand 1.2.1
+    Neue Funktionen: Setup-Menü-Struktur komplett überarbeitet, MIDI Clock Analyzer komplett überarbeitet 
+    Bugfixes: Aufwachen aus Standby bei bereits laufendem Clock verbessert, kurze Tastendrücke werden zuverlässig erkannt, Zeitmessung der MIDI-Ticks korrigiert (kein render-bedingter Jitter mehr)
+- Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
+- Platinen zum selbst Bestücken sind angekommen
+- Ein passendes, 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)
+- Bausatz zum Selbstlöten ist bei entsprechendem Interesse angedacht
 
-BarSync - Eurorackversion (in Entwicklung)
-- ✅ Code zu 80% fertig
-- 🔜 Schaltplan und PCB-Layout folgen
-- 🔜 3D-druckbarer Rahmen für Eurorack ist in Entwicklung
+BarSync - Eurorackversion (in Entwicklung und noch nicht auf Github)
+- Code fertig
+- PCB-Layout fertig und bestellt
+- Schaltplan und PCB-Layout folgen
+- 3D-druckbarer Rahmen für Eurorack ist in Entwicklung
 
 *(Bei Interesse am Bausatz und der Eurorackversion: Issue hier im Repo eröffnen oder Kontakt aufnehmen.)*
 
@@ -85,6 +89,7 @@ Vollständiger [`Schaltplan`](hardware/kicad/BarSync/BarSync_schematic.pdf) , PC
 [`hardware/`](hardware/).
 Vollständige Stückliste: [`hardware/BarSync_BOM.md`](hardware/BarSync_BOM.md)
 Aufbauanleitung: [`hardware/BarSync_Aufbauanleitung.md`](hardware/BarSync_Aufbauanleitung.md)
+3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)
 
 
 ## Wesentliche Hardware
