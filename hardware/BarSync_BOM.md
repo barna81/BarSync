@@ -10,7 +10,7 @@ und jede Netzverbindung einzeln verifiziert).
 
 ## Bauteile Part 1 (passend für das von mir erstellte Platinenlayout)
 
-| Ref. | Bauteil | Wert | Menge | Footprint | Hinweis |
+| Ref. | Bauteil | Wert | Menge | Footprint | Hinweis | 
 |---|---|---|---|---|---|
 | U1 | 6N139 | — | 1 | DIP-8, **Sockel** | Optokoppler, MIDI-IN |
 | U2 | SN7406N | — | 1 | DIP-14, **Sockel** | Hex-Inverter, 2 Gates in Reihe für MIDI-Thru |

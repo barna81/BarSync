@@ -12,7 +12,7 @@ every footprint, and every net connection individually verified).
 
 | Ref. | Component | Value | Qty | Footprint | Note |
 |---|---|---|---|---|---|
-| U1 | 6N139 | — | 1 | DIP-8, **socketed** | Optocoupler, MIDI-IN |
+| U1 | 6N139 | — | 1 | DIP-8, **socketed** | Optocoupler, MIDI-IN | 
 | U2 | SN7406N | — | 1 | DIP-14, **socketed** | Hex inverter, 2 gates in series for MIDI-Thru |
 | D1 | 1N4148 | — | 1 | DO-35, horizontal | MIDI-IN series diode |
 | R1 | Resistor | 220Ω, 1/4W | 1 | Axial, horizontal | MIDI-IN series resistor |
