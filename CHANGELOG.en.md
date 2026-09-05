@@ -2,17 +2,22 @@
 
 *[Deutsche Version](CHANGELOG.md)*
 
-## Enclosure/Documentation (2026-09-05)
+## Hardware Rev. 1.2 (2026-09-05)
 
-**Button label on the enclosure changed from "Divisor" to "Grid"** —
-a pure relabeling of the print, no functional change. All documents
-(README, pinplan, build guide, BOM, quickstart) now consistently use
-"Grid" instead of "Divisor" as the visible name for this button and
-its progress display. Internal firmware identifiers (`divisor`,
-`divisorIndex`, `PIN_BTN_DIVISOR`, etc. in `barsync.ino`) are
-unchanged, as is the "Divisor Switch" label in the KiCad
-schematic/netlist — if that should also change, it needs to be done
-separately, directly in the KiCad project.
+**Button net name in the schematic/netlist renamed from "Divisor
+Switch" to "Grid Switch"** — a pure identifier change in the KiCad
+project (schematic and netlist), no electrical or pin change. This
+completes the renaming that previously only covered the enclosure
+print and documentation (see entry below), now also carried through
+into the KiCad project.
+
+**PCB silkscreen updated:** the corresponding button's label on the
+board changed from "DIVISOR" to "GRID", matching the enclosure print.
+
+Affects: `hardware/kicad/BarSync/BarSync.kicad_sch`,
+`BarSync.kicad_pcb`, `BarSync.net`/`BarSync_Netlist.txt`. Internal
+firmware identifiers (`divisor`, `divisorIndex`, `PIN_BTN_DIVISOR`,
+etc.) remain unchanged.
 
 ## Firmware v1.2.0 (2026-09-02)
 

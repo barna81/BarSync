@@ -14,11 +14,10 @@ J3,Stiftleiste,2-polig 2.54mm,1,Vertikal,Custom Switch
 J4,Stiftleiste,2-polig 2.54mm,1,Vertikal,Divisor-Taster
 J5,Stiftleiste,2-polig 2.54mm,1,Vertikal,Reset-Taster
 J6,Stiftleiste,7-polig 2.54mm,1,Vertikal,Board-Header Display
-A1,ESP32-Buchsenleisten,2x 15-polig 2.54mm,2,DOIT_ESP32_DEVKIT_30Pins,ESP32-Board steckbar
+A1,ESP32 (WROOM-32 DOIT-30Pin),-,1,DOIT_ESP32_DEVKIT_30Pins,Wird direkt eingeloetet - kein Sockel noetig
 -,DIP-8-Sockel,-,1,-,Fuer U1
 -,DIP-14-Sockel,-,1,-,Fuer U2
 -,Befestigungsloch M2,2.2mm,4,MountingHole,Nur mechanisch
--,ESP32 Dev Board,WROOM-32 DOIT-30Pin,1,Wird gesteckt
 -,OLED-Display,SSD1309 2.42 Zoll 128x64 SPI,1,-,Via 7-pol Kabel an J6
 -,DIN-5-Buchse Einbau,Vollmetall empfohlen,2,-,MIDI-IN + MIDI-THRU
 -,Taster,Tact-Switch oder Fusstaster,3,-,Custom/Divisor/Reset

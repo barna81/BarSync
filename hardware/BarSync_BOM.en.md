@@ -27,7 +27,7 @@ every footprint, and every net connection individually verified).
 | J4 | Header | 2-pin, 2.54mm | 1 | Vertical | Divisor button |
 | J5 | Header | 2-pin, 2.54mm | 1 | Vertical | Reset button |
 | J6 | Header | 7-pin, 2.54mm | 1 | Vertical | Board header → Display (cable) |
-| A1 | ESP32 female headers | 2× 15-pin, 2.54mm | 2 | DOIT_ESP32_DEVKIT_30Pins footprint | ESP32 board plugs in |
+| A1 | ESP32 (WROOM-32, DOIT 30-pin) | — | 1 | DOIT_ESP32_DEVKIT_30Pins footprint | Soldered directly — no socket/header needed, the socket in the footprint's 3D model is cosmetic only |
 | — | Socket for U1 | DIP-8 | 1 | — | For 6N139 |
 | — | Socket for U2 | DIP-14 | 1 | — | For SN7406N |
 | — | Mounting hole | M2, 2.2mm | 4 | MountingHole | Mechanical only, not a component |
@@ -40,7 +40,6 @@ every footprint, and every net connection individually verified).
 
 | Component | Qty | Note |
 |---|---|---|
-| ESP32 dev board (WROOM-32, DOIT 30-pin layout) | 1 | Plugs into the female headers (A1) |
 | OLED display SSD1309, 2.42", 128×64, SPI | 1 | Via 7-pin Dupont cable to J6 |
 | DIN-5 panel-mount socket | 2 | MIDI-IN + MIDI-THRU |
 | Button (tactile switch or foot switch) | 3 | Custom, divisor, reset |
@@ -73,8 +72,8 @@ every footprint, and every net connection individually verified).
 
 ---
 
-*Created for BarSync hardware rev. 1.1 — matches `BarSync.kicad_pcb`/`.net` as of
-Aug 25, 2026. Changes vs. rev. 1.0: fixed R3 pull-up (+5V → +3V3, protects
+*Created for BarSync hardware rev. 1.2 — matches `BarSync.kicad_pcb`/`.net` as of
+Sep 2, 2026. Changes vs. rev. 1.0: fixed R3 pull-up (+5V → +3V3, protects
 ESP32 GPIO15), added C1/C2 as decoupling capacitors, tied unused 7406 gate
 inputs to GND. See `CHANGELOG.en.md`.*
 

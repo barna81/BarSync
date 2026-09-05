@@ -27,7 +27,7 @@ und jede Netzverbindung einzeln verifiziert).
 | J4 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Divisor-Taster |
 | J5 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Reset-Taster |
 | J6 | Stiftleiste | 7-polig, 2,54mm | 1 | Vertikal | Board-Header → Display (Kabel) |
-| A1 | ESP32 Buchsenleisten | 2× 15-polig, 2,54mm | 2 | DOIT_ESP32_DEVKIT_30Pins-Footprint | ESP32-Board wird gesteckt |
+| A1 | ESP32 (WROOM-32, DOIT-30-Pin) | — | 1 | DOIT_ESP32_DEVKIT_30Pins-Footprint | Wird direkt eingelötet — kein Sockel/keine Buchsenleisten nötig, der Sockel im 3D-Modell des Footprints ist rein kosmetisch |
 | — | Sockel für U1 | DIP-8 | 1 | — | Für 6N139 |
 | — | Sockel für U2 | DIP-14 | 1 | — | Für SN7406N |
 | — | Befestigungsloch | M2, 2,2mm | 4 | MountingHole | Nur mechanisch, kein Bauteil |
@@ -40,7 +40,6 @@ und jede Netzverbindung einzeln verifiziert).
 
 | Bauteil | Menge | Hinweis |
 |---|---|---|
-| ESP32 Dev Board (WROOM-32, DOIT-30-Pin-Layout) | 1 | Wird auf die Buchsenleisten (A1) gesteckt |
 | OLED-Display SSD1309, 2,42", 128×64, SPI | 1 | Über 7-poliges Dupont-Kabel an J6 |
 | DIN-5-Buchse (Einbau) | 2 | MIDI-IN + MIDI-THRU |
 | Taster (Tact-Switch oder Fußtaster) | 3 | Custom, Divisor, Reset |
@@ -73,8 +72,8 @@ und jede Netzverbindung einzeln verifiziert).
 
 ---
 
-*Erstellt für BarSync Hardware-Rev. 1.1 — Stand entspricht `BarSync.kicad_pcb`/`.net`
-vom 25.08.2026. Änderungen gegenüber Rev. 1.0: R3-Pull-up korrigiert (+5V → +3V3,
+*Erstellt für BarSync Hardware-Rev. 1.2 — Stand entspricht `BarSync.kicad_pcb`/`.net`
+vom 02.09.2026. Änderungen gegenüber Rev. 1.0: R3-Pull-up korrigiert (+5V → +3V3,
 schützt ESP32 GPIO15), C1/C2 als Abblockkondensatoren ergänzt, ungenutzte
 7406-Gate-Eingänge auf GND gelegt. Siehe `CHANGELOG.md`.*
 
