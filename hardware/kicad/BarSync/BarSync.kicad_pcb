@@ -4753,7 +4753,7 @@
 		(descr "Through hole straight pin header, 1x02, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x02 2.54mm single row")
 		(property "Reference" "J1"
-			(at 2.63 -0.27 180)
+			(at 2.63 -1.77 180)
 			(layer "F.SilkS")
 			(uuid "2b16a873-f69c-4c5a-8953-e7bac922b3da")
 			(effects
@@ -4763,8 +4763,8 @@
 				)
 			)
 		)
-		(property "Value" "MIDI-IN"
-			(at -0.12 5.73 90)
+		(property "Value" "MIDI: "
+			(at -2.62 -4.27 180)
 			(layer "F.SilkS")
 			(uuid "2c957946-0c41-4db1-bbc4-2e203a78d4cc")
 			(effects
@@ -5797,7 +5797,7 @@
 				)
 			)
 		)
-		(property "Value" "Divisor"
+		(property "Value" "Grid (Divisor)"
 			(at 0 6.04 0)
 			(layer "F.SilkS")
 			(uuid "cf7f7b6b-e5cc-4523-85c0-3dd3fcf65a04")
@@ -6839,7 +6839,7 @@
 		(descr "Through hole straight pin header, 1x03, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x03 2.54mm single row")
 		(property "Reference" "J2"
-			(at 2.63 -0.23 180)
+			(at 2.63 -1.73 180)
 			(layer "F.SilkS")
 			(uuid "802e6988-3a18-48e7-9918-86fe85bf5892")
 			(effects
@@ -6849,8 +6849,8 @@
 				)
 			)
 		)
-		(property "Value" "MIDI-THRU"
-			(at 0.13 8.02 90)
+		(property "Value" "THRU"
+			(at -2.62 -2.73 180)
 			(layer "F.SilkS")
 			(uuid "a9f6f6b6-33f8-454f-8054-c16f7b0b84ae")
 			(effects
@@ -7107,10 +7107,10 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "4"
-		(at 97.75 91.25 0)
+	(gr_text "1"
+		(at 98.25 85.75 0)
 		(layer "F.SilkS")
-		(uuid "eb823c88-1c36-4707-88c7-a2a52aa4c6f3")
+		(uuid "54d76f99-e51d-4e43-a093-7b51c17b18ea")
 		(effects
 			(font
 				(size 1 1)
@@ -7119,10 +7119,22 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "5"
-		(at 100.5 91.25 0)
+	(gr_text "2\n"
+		(at 101.5 85.75 0)
 		(layer "F.SilkS")
-		(uuid "72af3f0e-7028-4983-8fc6-696d67f9da68")
+		(uuid "c35e9eaa-aa3f-48ee-a29b-f9e196bf7099")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
+	(gr_text "1"
+		(at 110.25 85.75 0)
+		(layer "F.SilkS")
+		(uuid "b14c96fc-0305-4257-8941-433b99159305")
 		(effects
 			(font
 				(size 1 1)
@@ -7132,7 +7144,7 @@
 		)
 	)
 	(gr_text "2"
-		(at 107.75 91.25 0)
+		(at 110.25 91 0)
 		(layer "F.SilkS")
 		(uuid "79769ccd-8146-4a61-b5c3-74226bd2f8c5")
 		(effects
@@ -7143,8 +7155,20 @@
 			(justify left bottom)
 		)
 	)
+	(gr_text "2"
+		(at 112.75 85.75 0)
+		(layer "F.SilkS")
+		(uuid "887b4fb0-5718-46c6-84cb-4ade8a83cbc3")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
 	(gr_text "4"
-		(at 111.5 91.25 0)
+		(at 112.75 91 0)
 		(layer "F.SilkS")
 		(uuid "1d2606c9-72d2-4023-90ac-6eb89b2e89ba")
 		(effects
@@ -7167,8 +7191,20 @@
 			(justify left bottom)
 		)
 	)
+	(gr_text "3"
+		(at 115.5 85.75 0)
+		(layer "F.SilkS")
+		(uuid "38557add-e64d-4dd3-b9d4-456380db53e2")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify left bottom)
+		)
+	)
 	(gr_text "5"
-		(at 114.25 91.25 0)
+		(at 115.5 91 0)
 		(layer "F.SilkS")
 		(uuid "23fbedc4-7d40-48de-bb24-852e356cfa05")
 		(effects
@@ -7177,6 +7213,17 @@
 				(thickness 0.15)
 			)
 			(justify left bottom)
+		)
+	)
+	(gr_text "IN 4   5"
+		(at 99.25 90.5 0)
+		(layer "F.SilkS")
+		(uuid "8b1435bd-5258-486a-8a1e-b3ce79827f25")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
 		)
 	)
 	(segment

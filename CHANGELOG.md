@@ -2,6 +2,18 @@
 
 *[English version](CHANGELOG.en.md)*
 
+## Gehäuse/Dokumentation (05.09.2026)
+
+**Taster-Bezeichnung auf dem Gehäuse von "Divisor" zu "Grid" geändert**
+— reine Umbenennung des Aufdrucks, keine Funktionsänderung. Alle
+Dokumente (README, Pinplan, Aufbauanleitung, BOM, Quickstart) verwenden
+jetzt durchgängig "Grid" statt "Divisor" als sichtbare Bezeichnung für
+diesen Taster und die dazugehörige Fortschrittsanzeige. Firmware-interne
+Bezeichner (`divisor`, `divisorIndex`, `PIN_BTN_DIVISOR` etc. in
+`barsync.ino`) bleiben unverändert, ebenso die Bezeichnung "Divisor
+Switch" im KiCad-Schaltplan/Netzliste — falls gewünscht, muss dies
+separat direkt im KiCad-Projekt nachgezogen werden.
+
 ## Firmware v1.2.0 (02.09.2026)
 
 **Bugfix: BarSync blieb nach dem Aufwachen aus dem Standby eingefroren

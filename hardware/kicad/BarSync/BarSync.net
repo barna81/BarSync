@@ -2,7 +2,7 @@
 	(version "E")
 	(design
 		(source "/Users/barnabas/Desktop/BarSync/hardware/kicad/BarSync/BarSync.kicad_sch")
-		(date "2026-09-02T16:03:39")
+		(date "2026-09-05T16:25:29")
 		(tool "Eeschema 10.0.5")
 		(sheet
 			(number "1")
@@ -529,7 +529,7 @@
 		)
 		(comp
 			(ref "J4")
-			(value "Divisor Switch")
+			(value "Grid (Divisor) Switch")
 			(footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical")
 			(description "Generic connector, single row, 01x02, script generated")
 			(fields

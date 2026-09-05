@@ -61,7 +61,7 @@ Order: start with the flattest/most robust components, then the more delicate on
 
 15. On startup, the display should show the boot screen ("BarSync")
 16. Connect a MIDI source, start the clock → the display should switch to "RUN"
-17. Test all three buttons individually (trigger custom button — currently: SET 1.1 —, change divisor, trigger reset)
+17. Test all three buttons individually (trigger custom button — currently: SET 1.1 —, change grid, trigger reset)
 18. Only once everything works: install it into the enclosure
 
 ---
@@ -72,7 +72,7 @@ Order: start with the flattest/most robust components, then the more delicate on
 |---|---|
 | Display stays dark | Check SPI wiring at J6 (pin order), check contrast in the setup menu |
 | No MIDI signal detected | Check optocoupler orientation (U1) and D1 polarity |
-| Buttons don't respond or respond incorrectly | Check the mapping: J3=Custom(GPIO32), J4=Divisor(GPIO33), J5=Reset(GPIO25) |
+| Buttons don't respond or respond incorrectly | Check the mapping: J3=Custom(GPIO32), J4=Grid(GPIO33), J5=Reset(GPIO25) |
 
 ---
 

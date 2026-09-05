@@ -46,7 +46,7 @@ BarSync unterstützt dich bei deiner Live-Performance. Während einer Show hast 
 ## Features
 
 - Bar-/Beat-Zähler, synchron zur eingehenden MIDI-Clock (24 PPQN)
-- Divisor-Fortschrittsbalken (x1 bis x128 Bars), Grundfläche bleibt konstant,
+- Grid-Fortschrittsbalken (x1 bis x128 Bars), Grundfläche bleibt konstant,
   Kachelgröße passt sich an
 - 5 wählbare Taktarten (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset-Taster: zwei Stufen (kurz = Taktende, mittel/halten = Zyklusende) — pro Stufe getrennt einstellbar, ob dabei auch die Spielzeit zurückgesetzt wird (Default: ja). Zusätzlich eine eigenständige "SET 1.1"-Funktion (Standardbelegung des Custom-Tasters) zum sofortigen Neusetzen des Beatmusters, quantisiert (auf den nächstgelegenen Beat gerundet) oder sofort (roher Tick) — im Einstellungsmenü wählbar
@@ -66,9 +66,9 @@ Kurz zusammengefasst — vollständige Anleitung in
 |---|---|
 | Custom-Taster (kurz) | SET 1.1 (Beatmuster neu setzen)* |
 | Custom-Taster (1s halten) | MIDI-Analyzer ein/aus* |
-| Divisor (kurz) | Nächster Divisor-Wert |
+| Grid (kurz) | Anzahl der angezeigten Takte im Grid wechseln (x1–x128) |
 | Reset (kurz/mittel) | Reset-Stufe 1/2 |
-| Custom-Taster + Divisor gleichzeitig | Nudge-Modus ein/aus* |
+| Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus* |
 | Reset beim Booten 1s halten | Einstellungsmenü |
 
 *Der Custom-Taster ist frei belegbar — die hier gezeigten Funktionen entsprechen der aktuellen Firmware-Voreinstellung.
@@ -96,7 +96,7 @@ Aufbauanleitung: [`hardware/BarSync_Aufbauanleitung.md`](hardware/BarSync_Aufbau
 
 - ESP32 Dev Board (30-Pin DOIT-Layout)
 - SSD1309 OLED, 2,42", 128×64, SPI
-- 3 Taster (Custom, Divisor, Reset)
+- 3 Taster (Custom, Grid, Reset)
 
 
 ## Firmware flashen

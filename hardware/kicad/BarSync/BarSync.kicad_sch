@@ -5796,7 +5796,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "Divisor Switch"
+		(property "Value" "Grid (Divisor) Switch"
 			(at 241.808 102.616 0)
 			(show_name no)
 			(do_not_autoplace no)

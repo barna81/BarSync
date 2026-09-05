@@ -2,6 +2,18 @@
 
 *[Deutsche Version](CHANGELOG.md)*
 
+## Enclosure/Documentation (2026-09-05)
+
+**Button label on the enclosure changed from "Divisor" to "Grid"** —
+a pure relabeling of the print, no functional change. All documents
+(README, pinplan, build guide, BOM, quickstart) now consistently use
+"Grid" instead of "Divisor" as the visible name for this button and
+its progress display. Internal firmware identifiers (`divisor`,
+`divisorIndex`, `PIN_BTN_DIVISOR`, etc. in `barsync.ino`) are
+unchanged, as is the "Divisor Switch" label in the KiCad
+schematic/netlist — if that should also change, it needs to be done
+separately, directly in the KiCad project.
+
 ## Firmware v1.2.0 (2026-09-02)
 
 **Bugfix: BarSync stayed frozen at its pre-sleep state after waking
