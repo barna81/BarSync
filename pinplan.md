@@ -21,13 +21,13 @@ steckbar.
 
 | Display-Pin        | ESP32 Pin | GPIO   | Kabelfarbe (Flachbandkabel) |
 |---------------------|-----------|--------|------------|
-| GND                 | GND       | –      | Blau       |
-| VCC                  | 3V3       | –      | Orange     |
-| SCK / D0 / CLK       | GPIO18    | 18     | Lila       |
-| SDA / D1 / MOSI      | GPIO23    | 23     | Grau       |
-| RES / RST            | GPIO4     | 4      | Grün       |
-| DC                   | GPIO21    | 21     | Braun      |
-| CS                   | GPIO5     | 5      | Gelb       |
+| GND                 | GND       | –      |            |
+| VCC                  | 3V3       | –      |            |
+| SCK / D0 / CLK       | GPIO18    | 18     |            |
+| SDA / D1 / MOSI      | GPIO23    | 23     |            |
+| RES / RST            | GPIO4     | 4      |            |
+| DC                   | GPIO21    | 21     |            |
+| CS                   | GPIO5     | 5      |            |
 
 **Stückliste für diese Verbindung:**
 - 1× 7-polige Stiftleiste, gerade, 2,54mm-Raster (auf der Hauptplatine

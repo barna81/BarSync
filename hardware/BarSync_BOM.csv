@@ -11,7 +11,7 @@ C2,Kondensator,100nF X7R,1,Radial RM5,Abblockkondensator U2
 J1,Stiftleiste,2-polig 2.54mm,1,Vertikal,Board-Header MIDI-IN
 J2,Stiftleiste,3-polig 2.54mm,1,Vertikal,Board-Header MIDI-THRU
 J3,Stiftleiste,2-polig 2.54mm,1,Vertikal,Custom Switch
-J4,Stiftleiste,2-polig 2.54mm,1,Vertikal,Grid-Taster
+J4,Stiftleiste,2-polig 2.54mm,1,Vertikal,Divisor-Taster
 J5,Stiftleiste,2-polig 2.54mm,1,Vertikal,Reset-Taster
 J6,Stiftleiste,7-polig 2.54mm,1,Vertikal,Board-Header Display
 A1,ESP32-Buchsenleisten,2x 15-polig 2.54mm,2,DOIT_ESP32_DEVKIT_30Pins,ESP32-Board steckbar
@@ -21,7 +21,13 @@ A1,ESP32-Buchsenleisten,2x 15-polig 2.54mm,2,DOIT_ESP32_DEVKIT_30Pins,ESP32-Boar
 -,ESP32 Dev Board,WROOM-32 DOIT-30Pin,1,Wird gesteckt
 -,OLED-Display,SSD1309 2.42 Zoll 128x64 SPI,1,-,Via 7-pol Kabel an J6
 -,DIN-5-Buchse Einbau,Vollmetall empfohlen,2,-,MIDI-IN + MIDI-THRU
--,Taster,Tact-Switch oder Fusstaster,3,-,Custom/Grid/Reset
+-,Taster,Tact-Switch oder Fusstaster,3,-,Custom/Divisor/Reset
 -,Dupont-Kabel BB 2-polig,-,4,-,J1 + J3 + J4 + J5
 -,Dupont-Kabel BB 3-polig,-,1,-,J2
 -,Dupont-Kabel BB 7-polig,-,1,-,J6
+-,Gewindeeinsatz Ruthex,M3,4,-,Gehäusemontage
+-,Inbusschraube,M3x12,4,-,Gehäusemontage (in Gewindeeinsätze)
+-,Inbusschraube,M2x4,4,-,Gehäusemontage
+-,Inbusschraube,M2x10,8,-,Gehäusemontage
+-,Mutter,M2,4,-,Gehäusemontage
+-,Unterlegscheibe,M2,12,-,Gehäusemontage

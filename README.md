@@ -14,7 +14,7 @@ einem 128×64-OLED-Display anzeigt.
 ## Status (Stand 04.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.2.1   
+- Aktueller FW Stand 1.2.1     
     Neue Funktionen: Setup-Menü-Struktur komplett überarbeitet, MIDI Clock Analyzer komplett überarbeitet   
     Bugfixes: Aufwachen aus Standby bei bereits laufendem Clock verbessert, kurze Tastendrücke werden zuverlässig erkannt, Zeitmessung der MIDI-Ticks korrigiert (kein render-bedingter Jitter mehr)
 - Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet

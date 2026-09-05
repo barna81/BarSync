@@ -24,7 +24,7 @@ und jede Netzverbindung einzeln verifiziert).
 | J1 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Board-Header → MIDI-IN-Buchse (Kabel) |
 | J2 | Stiftleiste | 3-polig, 2,54mm | 1 | Vertikal | Board-Header → MIDI-THRU-Buchse (Kabel) |
 | J3 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Custom Switch |
-| J4 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Grid-Taster |
+| J4 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Divisor-Taster |
 | J5 | Stiftleiste | 2-polig, 2,54mm | 1 | Vertikal | Reset-Taster |
 | J6 | Stiftleiste | 7-polig, 2,54mm | 1 | Vertikal | Board-Header → Display (Kabel) |
 | A1 | ESP32 Buchsenleisten | 2× 15-polig, 2,54mm | 2 | DOIT_ESP32_DEVKIT_30Pins-Footprint | ESP32-Board wird gesteckt |
@@ -43,10 +43,23 @@ und jede Netzverbindung einzeln verifiziert).
 | ESP32 Dev Board (WROOM-32, DOIT-30-Pin-Layout) | 1 | Wird auf die Buchsenleisten (A1) gesteckt |
 | OLED-Display SSD1309, 2,42", 128×64, SPI | 1 | Über 7-poliges Dupont-Kabel an J6 |
 | DIN-5-Buchse (Einbau) | 2 | MIDI-IN + MIDI-THRU |
-| Taster (Tact-Switch oder Fußtaster) | 3 | Custom, Grid, Reset |
+| Taster (Tact-Switch oder Fußtaster) | 3 | Custom, Divisor, Reset |
 | Dupont-Kabel Buchse-Buchse, 2-polig | 4 | J1 (MIDI-IN) + J3/J4/J5 (Taster) |
 | Dupont-Kabel Buchse-Buchse, 3-polig | 1 | J2 (MIDI-THRU) |
 | Dupont-Kabel Buchse-Buchse, 7-polig | 1 | J6 (Display) |
+
+---
+
+## Bauteile Part 3 (Gehäuse-Befestigungsmaterial)
+
+| Bauteil | Wert | Menge | Hinweis |
+|---|---|---|---|
+| Gewindeeinsatz Ruthex | M3 | 4 | Gehäusemontage |
+| Inbusschraube | M3×12 | 4 | Gehäusemontage, in Gewindeeinsätze |
+| Inbusschraube | M2×4 | 4 | Gehäusemontage |
+| Inbusschraube | M2×10 | 8 | Gehäusemontage |
+| Mutter | M2 | 4 | Gehäusemontage |
+| Unterlegscheibe | M2 | 12 | Gehäusemontage |
 
 ---
 

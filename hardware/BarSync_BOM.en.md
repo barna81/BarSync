@@ -24,7 +24,7 @@ every footprint, and every net connection individually verified).
 | J1 | Header | 2-pin, 2.54mm | 1 | Vertical | Board header → MIDI-IN socket (cable) |
 | J2 | Header | 3-pin, 2.54mm | 1 | Vertical | Board header → MIDI-THRU socket (cable) |
 | J3 | Header | 2-pin, 2.54mm | 1 | Vertical | Custom Switch |
-| J4 | Header | 2-pin, 2.54mm | 1 | Vertical | Grid button |
+| J4 | Header | 2-pin, 2.54mm | 1 | Vertical | Divisor button |
 | J5 | Header | 2-pin, 2.54mm | 1 | Vertical | Reset button |
 | J6 | Header | 7-pin, 2.54mm | 1 | Vertical | Board header → Display (cable) |
 | A1 | ESP32 female headers | 2× 15-pin, 2.54mm | 2 | DOIT_ESP32_DEVKIT_30Pins footprint | ESP32 board plugs in |
@@ -43,10 +43,23 @@ every footprint, and every net connection individually verified).
 | ESP32 dev board (WROOM-32, DOIT 30-pin layout) | 1 | Plugs into the female headers (A1) |
 | OLED display SSD1309, 2.42", 128×64, SPI | 1 | Via 7-pin Dupont cable to J6 |
 | DIN-5 panel-mount socket | 2 | MIDI-IN + MIDI-THRU |
-| Button (tactile switch or foot switch) | 3 | Custom, grid, reset |
+| Button (tactile switch or foot switch) | 3 | Custom, divisor, reset |
 | Dupont cable female-female, 2-pin | 4 | J1 (MIDI-IN) + J3/J4/J5 (buttons) |
 | Dupont cable female-female, 3-pin | 1 | J2 (MIDI-THRU) |
 | Dupont cable female-female, 7-pin | 1 | J6 (display) |
+
+---
+
+## Components Part 3 (Enclosure Fastening Hardware)
+
+| Component | Value | Qty | Note |
+|---|---|---|---|
+| Threaded insert, Ruthex | M3 | 4 | Enclosure assembly |
+| Socket head screw | M3×12 | 4 | Enclosure assembly, into threaded inserts |
+| Socket head screw | M2×4 | 4 | Enclosure assembly |
+| Socket head screw | M2×10 | 8 | Enclosure assembly |
+| Nut | M2 | 4 | Enclosure assembly |
+| Washer | M2 | 12 | Enclosure assembly |
 
 ---
 

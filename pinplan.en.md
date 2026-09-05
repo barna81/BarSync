@@ -20,13 +20,13 @@ on the display itself — both ends simply plug in.
 
 | Display Pin          | ESP32 Pin | GPIO   | Cable Color (ribbon cable) |
 |-----------------------|-----------|--------|------------|
-| GND                   | GND       | –      | Blue       |
-| VCC                   | 3V3       | –      | Orange     |
-| SCK / D0 / CLK        | GPIO18    | 18     | Purple     |
-| SDA / D1 / MOSI       | GPIO23    | 23     | Gray       |
-| RES / RST             | GPIO4     | 4      | Green      |
-| DC                    | GPIO21    | 21     | Brown      |
-| CS                    | GPIO5     | 5      | Yellow     |
+| GND                   | GND       | –      |            |
+| VCC                   | 3V3       | –      |            |
+| SCK / D0 / CLK        | GPIO18    | 18     |            |
+| SDA / D1 / MOSI       | GPIO23    | 23     |            |
+| RES / RST             | GPIO4     | 4      |            |
+| DC                    | GPIO21    | 21     |            |
+| CS                    | GPIO5     | 5      |            |
 
 **Parts list for this connection:**
 - 1× 7-pin header, straight, 2.54 mm pitch (soldered onto the main board)
