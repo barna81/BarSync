@@ -65,15 +65,14 @@ Kurz zusammengefasst — vollständige Anleitung in
 | Taste | Funktion |
 |---|---|
 | Custom-Taster (kurz) | SET 1.1 (Beatmuster neu setzen)* |
-| Custom-Taster (1s halten) | MIDI Monitor ein/aus* |
+| Custom-Taster (1s halten) | MIDI Monitor ein/aus** |
 | Grid (kurz) | Anzahl der angezeigten Takte im Grid wechseln (x1–x128) |
 | Reset (kurz/mittel) | Reset-Stufe 1/2 |
-| Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus* |
+| Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus |
 | Reset beim Booten 1s halten | Einstellungsmenü |
 
 *Der Custom-Taster ist frei belegbar — die hier gezeigten Funktionen entsprechen der aktuellen Firmware-Voreinstellung.
-
-Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
+**Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
 
 
 ## Cool! Wie komme ich da ran?

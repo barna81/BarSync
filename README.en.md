@@ -65,15 +65,14 @@ Quick overview — full guide in
 | Button | Function |
 |---|---|
 | Custom button (short) | SET 1.1 (re-anchor beat pattern)* |
-| Custom button (hold 1s) | Toggle MIDI Monitor* |
+| Custom button (hold 1s) | Toggle MIDI Monitor** |
 | Grid (short) | Change the number of bars shown in the grid (x1–x128) |
 | Reset (short/medium) | Reset stage 1/2 |
-| Custom button + Grid together | Toggle nudge mode* |
+| Custom button + Grid together | Toggle nudge mode |
 | Hold Reset 1s at boot | Settings menu |
 
 *The custom button is freely assignable — the functions shown here reflect the current firmware default.
-
-In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
+**In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
 
 ## Cool! How do I get one?
