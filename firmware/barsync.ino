@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  *  BARSYNC — MIDI Clock Bar Counter & Visualizer — ESP32 + SSD1309 OLED (SPI, 128x64)
- *  Version: 1.2.1
+ *  Version: 1.2.2
  * ============================================================================
  *
  * Counts incoming MIDI clock (24 PPQN), derives beat/bar from it, and shows
@@ -18,7 +18,7 @@
  * ============================================================================
  */
 
-#define FW_VERSION "1.2.1"
+#define FW_VERSION "1.2.2"
 
 
 #include <MIDI.h>
@@ -147,11 +147,16 @@ struct Settings {
                                   // button, held past 1s) - independent
                                   // setting, not shared with Reset 1.
                                   // Menu: Switches > Reset Switch > Reset 2
+  bool    gridSeparatorsEnabled; // true (default): 32-bar group separators
+                                  // in the divisor grid (x16/x32/x64/x128),
+                                  // shared 35px reference footprint. false:
+                                  // original layout, fixed 32px, no grouping.
+                                  // Menu: Display > Grid Lines
 };
 Settings settings;
 
-const uint8_t CONTRAST_STEPS[] = {50, 100, 150, 200, 255};
-const uint8_t CONTRAST_STEP_COUNT = 5;
+const uint8_t CONTRAST_STEPS[] = {25, 50, 100, 150, 200, 255};
+const uint8_t CONTRAST_STEP_COUNT = 6;
 
 const uint16_t STANDBY_DELAY_MINUTES[] = {1, 5, 10, 30, 60};
 const uint8_t  STANDBY_DELAY_COUNT = 5;
@@ -203,9 +208,9 @@ void loadSettings() {
   prefs.begin("midiclock", true);
   settings.timeSigIndex = prefs.getUChar("tsig", 0);
   settings.divisorIndex = prefs.getUChar("div", 2);
-  settings.contrast     = prefs.getUChar("contrast", 255);
+  settings.contrast     = prefs.getUChar("contrast", 50);
   settings.invert       = prefs.getBool("invert", false);
-  settings.enabledDivisorMask = prefs.getUChar("divmask", 0xFF);
+  settings.enabledDivisorMask = prefs.getUChar("divmask", 0xFC); // default: x4-x128 only, matches the Eurorack sibling
   settings.standbyEnabled     = prefs.getBool("stbyon", true);
   settings.standbyDelayIndex  = prefs.getUChar("stbydelay", 1); // default 5 min
   settings.customButtonRole   = prefs.getUChar("customrole", CUSTOM_ROLE_SET11);
@@ -213,6 +218,7 @@ void loadSettings() {
   settings.resetInstantMode   = prefs.getBool("rstinstant", false); // default: QUANTIZED
   settings.reset1PlaytimeEnabled = prefs.getBool("r1playtime", true);
   settings.reset2PlaytimeEnabled = prefs.getBool("r2playtime", true);
+  settings.gridSeparatorsEnabled = prefs.getBool("gridseps", true);
   prefs.end();
 
   // Apply loaded values to the active runtime variables
@@ -242,6 +248,7 @@ void saveSettings() {
   prefs.putBool("rstinstant", settings.resetInstantMode);
   prefs.putBool("r1playtime", settings.reset1PlaytimeEnabled);
   prefs.putBool("r2playtime", settings.reset2PlaytimeEnabled);
+  prefs.putBool("gridseps", settings.gridSeparatorsEnabled);
   prefs.end();
 }
 
@@ -261,9 +268,9 @@ void factoryResetSettings() {
   prefs.end();
   settings.timeSigIndex = 0;
   settings.divisorIndex = 2;
-  settings.contrast     = 255;
+  settings.contrast     = 50;
   settings.invert       = false;
-  settings.enabledDivisorMask = 0xFF;
+  settings.enabledDivisorMask = 0xFC; // x4-x128 only, matches the Eurorack sibling
   settings.standbyEnabled     = true;
   settings.standbyDelayIndex  = 1;
   settings.customButtonRole   = CUSTOM_ROLE_SET11;
@@ -271,6 +278,7 @@ void factoryResetSettings() {
   settings.resetInstantMode   = false;
   settings.reset1PlaytimeEnabled = true;
   settings.reset2PlaytimeEnabled = true;
+  settings.gridSeparatorsEnabled = true;
   timeSigIndex = settings.timeSigIndex;
   divisorIndex = settings.divisorIndex;
 }
@@ -590,7 +598,40 @@ void triggerSet11() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// MIDI MONITOR: last MIDI_MON_SLOTS non-realtime messages (Note/CC/Program
+// Change/Pitch Bend), shown on the Monitor screen sorted by channel at
+// render time - see renderAnalyzer() further down. Pure FIFO ring buffer,
+// no per-channel dedup: two messages from the same channel can both be
+// visible at once, oldest one evicted first as new ones arrive. Declared
+// up here (rather than next to pushMidiMonEvent()/handleMon*() below)
+// because onResetButton() below already needs to clear it, and plain
+// global variables must be declared before their point of use in the
+// file, unlike functions which Arduino auto-prototypes.
+// ---------------------------------------------------------------------------
+enum MidiMonType { MIDIMON_NOTE_ON, MIDIMON_NOTE_OFF, MIDIMON_CC, MIDIMON_PC, MIDIMON_PB };
+#define MIDI_MON_SLOTS 6
+struct MidiMonEvent {
+  uint8_t type;    // one of MidiMonType above
+  uint8_t channel; // 1-16
+  uint8_t data1;   // note number / CC number / program number - unused for PB
+  int16_t data2;   // velocity / CC value - signed bend amount for PB, unused for PC
+};
+volatile MidiMonEvent midiMonRing[MIDI_MON_SLOTS];
+volatile uint8_t midiMonHead  = 0; // next slot to overwrite
+volatile uint8_t midiMonCount = 0; // valid entries so far, caps at MIDI_MON_SLOTS
+
 void onResetButton(bool longPress) {
+  if (currentMode == MODE_ANALYZER) {
+    // MIDI Monitor screen: Reset clears the Note/CC event log instead
+    // of performing any transport-reset function here (see also
+    // onResetMediumHeldDuringPress(), gated the same way).
+    if (suppressResetAction) { suppressResetAction = false; return; } // was only a wake-up press
+    midiMonCount = 0;
+    midiMonHead  = 0;
+    return;
+  }
+
   // If the press was already handled while held (escalated to Reset
   // 2, see onResetMediumHeldDuringPress()), it stays pending - Reset 2
   // always waits for the natural end of the divisor cycle. Just start
@@ -650,6 +691,7 @@ void onResetButton(bool longPress) {
 // ever execute later, in handleClock(), once the actual bar/cycle
 // boundary is reached.
 void onResetMediumHeldDuringPress() {
+  if (currentMode == MODE_ANALYZER) return; // Reset clears the log on release instead, see onResetButton()
   if (suppressResetAction) return; // wake-up press does not trigger an effect
   if (!isRunning) return; // nothing to reset in STOP mode
 
@@ -662,64 +704,48 @@ void onResetMediumHeldDuringPress() {
   }
 }
 
-// TEMPORARY DIAGNOSTIC: measures how long the last render() /
-// renderAnalyzer() call (including the SPI framebuffer push) actually
-// took, to empirically check whether a slow render is really what's
-// delaying MIDI byte processing and polluting the analyzer's own
-// jitter measurement - rather than continuing to guess. maxRenderUs
-// resets every 2s so it reflects a recent worst-case, not an
-// ever-growing all-time record. Shown on the Analyzer screen; remove
-// once the root cause is confirmed. Declared here (rather than next
-// to its actual use in loop(), near the bottom of the file) because
-// renderAnalyzer() reads it and is defined much earlier - plain global
-// variables need to be declared before their point of use in the
-// file, unlike functions which Arduino auto-prototypes.
-volatile uint32_t lastRenderUs    = 0;
-volatile uint32_t maxRenderUs     = 0;
-uint32_t maxRenderWindowStartMs   = 0;
-
-// ---------------------------------------------------------------------------
-// MIDI ANALYZER: ring buffer of the most recent tick intervals for jitter/stability
-// ---------------------------------------------------------------------------
-#define ANALYZER_HISTORY_SIZE 96 // = 4 Beats with 24 PPQN
-volatile uint32_t tickIntervalHistory[ANALYZER_HISTORY_SIZE];
-volatile uint8_t  analyzerHistIndex = 0;
-volatile bool     analyzerHistFull  = false;
-volatile uint32_t lastTickMicrosForAnalyzer = 0;
-
-// Plausible tick-interval bounds @ 24 PPQN, matching the same 20-400 BPM
-// "realistic tempo" window already used for the main BPM smoothing in
-// handleClock() - used to keep glitch intervals out of the analyzer
-// ring buffer (see handleClock() below).
-#define ANALYZER_MIN_TICK_US 6250UL   // 400 BPM
-#define ANALYZER_MAX_TICK_US 125000UL // 20 BPM
-
-// MIDI RUN/STOP state history: samples isRunning (derived from the MIDI
-// Start/Stop/Continue messages - see handleStart()/handleStop()/
-// handleContinue() below) every MIDI_RUNSTOP_SAMPLE_INTERVAL_MS into a
-// ring buffer, so the analyzer can draw a run/stop level trace over time.
-// This is the MIDI-only equivalent of the CV RUN/STOP trace on the
-// Eurorack variant (this board has no CV inputs).
-#define MIDI_RUNSTOP_HISTORY_SIZE 60 // 60 * 200ms = 12s window
-#define MIDI_RUNSTOP_SAMPLE_INTERVAL_MS 200
+// MIDI RUN/STOP + CLOCK trace history: sampled once per incoming MIDI
+// clock TICK (not wall-clock time) - see handleClock() below - so the
+// sample rate automatically scales with tempo and the trace always
+// spans exactly MIDI_TRACE_BEATS beats, at any BPM. Both traces share
+// one index/full flag since they're always sampled together on the
+// same tick, keeping them on one identical timebase. This is the
+// MIDI-only equivalent of the CV RUN/STOP trace on the Eurorack variant
+// (this board has no CV inputs).
+#define MIDI_TRACE_BEATS 8
+#define MIDI_TRACE_TICKS_PER_BEAT 24 // MIDI clock is fixed at 24 PPQN
+#define MIDI_RUNSTOP_HISTORY_SIZE (MIDI_TRACE_BEATS * MIDI_TRACE_TICKS_PER_BEAT) // 192 ticks = 8 beats
 volatile bool     midiRunStopHistory[MIDI_RUNSTOP_HISTORY_SIZE];
 volatile uint8_t  midiRunStopHistIndex = 0;
 volatile bool     midiRunStopHistFull  = false;
-uint32_t lastMidiRunStopSampleMs = 0;
 
-// Peak-hold scale for the analyzer's tick-deviation ruler: locks onto
-// the largest deviation actually seen and only relaxes to the next
-// largest once RULER_PEAK_HOLD_BEATS beats have passed without seeing
-// a deviation at least that large again. Everything here is driven
-// purely by received ticks (not by isRunning/Start-Stop), matching
-// "the analyzer processes what's received, not our own grid".
-#define RULER_PEAK_HOLD_BEATS 4
-volatile uint32_t analyzerRunningAvgUs   = 0;    // continuously-updated reference average, separate from the render-time percentile average
-volatile bool     analyzerRunningAvgInit = false;
-volatile uint32_t analyzerBeatCounter    = 0;    // increments every 24 valid analyzer ticks
-volatile uint8_t  analyzerBeatTickCount  = 0;    // 0..23 toward the next beat
-volatile uint32_t rulerLockedScaleUs     = 1000; // current locked ruler range (raw us, before display padding/rounding)
-volatile uint32_t rulerLastConfirmBeat   = 0;    // beat number the locked scale was last matched or exceeded at
+// MIDI CLOCK beat-pulse history: true at the one tick per beat where a
+// full beat (24 ticks) just completed - see the BPM block in
+// handleClock(), which already detects this same event. Deliberately
+// independent of isRunning/Start-Stop, unlike midiRunStopHistory above -
+// this reflects the raw incoming clock signal itself, so it keeps
+// pulsing even while stopped as long as clock bytes arrive.
+volatile bool midiClockPulseHistory[MIDI_RUNSTOP_HISTORY_SIZE];
+
+// True at the same tick as midiClockPulseHistory above, but only when
+// that beat is also beat 1 of the bar (the "downbeat" - takes the
+// current time signature into account via beatsPerBar()). Only
+// meaningful while running, same as currentBeat/currentBar themselves.
+// Lets renderAnalyzer() draw the downbeat as a thicker mark than a
+// regular beat in the MIDI CLOCK trace.
+volatile bool midiClockDownbeatHistory[MIDI_RUNSTOP_HISTORY_SIZE];
+
+// Set on every beat (see isBeatTick in handleClock()) - independent of
+// Start/Stop, same as midiClockPulseHistory. Consumed and cleared by
+// renderAnalyzer() to flash the "MIDI CLK" label's background for
+// exactly one frame per beat.
+volatile bool midiClockBeatPending = false;
+
+// Set by handleStart(): forces the very next sampled tick to be marked
+// as a downbeat. Bar 1's downbeat has no preceding "wrap into a new
+// bar" for the normal isDownbeatTick check below to detect, since
+// there's no previous bar to wrap from right after Start.
+volatile bool midiClockForceDownbeat = false;
 
 // Anchor for beat extrapolation: timestamp of the last REAL tick.
 // Between two ticks, the display (E bar, beat blink) is smoothly
@@ -827,69 +853,6 @@ void handleClock() {
   uint32_t nowMicrosForAnchor = popMidiRxTimestampOr(micros());
   lastTickAnchorMicros = nowMicrosForAnchor; // reset anchor for extrapolation
 
-  // --- Analyzer: write tick interval into the ring buffer ---
-  // Same "realistic tempo" plausibility bound as the BPM smoothing
-  // below (20-400 BPM @ 24 PPQN) - reused here so a single glitch
-  // interval (double-tick burst, a stray/delayed byte, a rapid tempo
-  // jump on the source) never enters the analyzer history at all.
-  // Without this, one such outlier not only skewed the graph (it's
-  // part of the plain average used as its centerline, unlike the
-  // jitter range below which is already percentile-trimmed) but could
-  // also turn into an implausibly high "BPM" in the Analyzer's
-  // min/max readout, overflowing the small dtostrf buffers there and
-  // crashing the board.
-  uint32_t nowMicrosA = nowMicrosForAnchor;
-  if (lastTickMicrosForAnalyzer != 0) {
-    uint32_t ivUs = nowMicrosA - lastTickMicrosForAnalyzer;
-    if (ivUs >= ANALYZER_MIN_TICK_US && ivUs <= ANALYZER_MAX_TICK_US) {
-      tickIntervalHistory[analyzerHistIndex] = ivUs;
-      analyzerHistIndex++;
-      if (analyzerHistIndex >= ANALYZER_HISTORY_SIZE) {
-        analyzerHistIndex = 0;
-        analyzerHistFull = true;
-      }
-
-      // --- Ruler peak-hold: continuously-updated reference average,
-      // independent of the render-time percentile average, so the
-      // scale-lock logic below works the same regardless of whether
-      // the analyzer screen is even being looked at right now.
-      if (!analyzerRunningAvgInit) {
-        analyzerRunningAvgUs = ivUs;
-        analyzerRunningAvgInit = true;
-      } else {
-        analyzerRunningAvgUs = (analyzerRunningAvgUs * 7 + ivUs) / 8;
-      }
-      uint32_t devNow = (ivUs > analyzerRunningAvgUs) ? (ivUs - analyzerRunningAvgUs) : (analyzerRunningAvgUs - ivUs);
-
-      analyzerBeatTickCount++;
-      if (analyzerBeatTickCount >= 24) { analyzerBeatTickCount = 0; analyzerBeatCounter++; }
-
-      if (devNow >= rulerLockedScaleUs) {
-        // New (or re-confirmed) peak - lock onto it and reset the hold timer.
-        rulerLockedScaleUs = devNow;
-        rulerLastConfirmBeat = analyzerBeatCounter;
-      } else if ((analyzerBeatCounter - rulerLastConfirmBeat) >= RULER_PEAK_HOLD_BEATS) {
-        // The locked peak hasn't been matched or exceeded in
-        // RULER_PEAK_HOLD_BEATS beats - it's aged out of the visible
-        // 4-beat window by now anyway, so drop down to whatever the
-        // largest deviation still actually present in that window is.
-        uint8_t validCount = analyzerHistFull ? ANALYZER_HISTORY_SIZE : analyzerHistIndex;
-        uint32_t nextMax = 0;
-        for (uint8_t k = 0; k < validCount; k++) {
-          uint32_t vv = tickIntervalHistory[k];
-          uint32_t dd = (vv > analyzerRunningAvgUs) ? (vv - analyzerRunningAvgUs) : (analyzerRunningAvgUs - vv);
-          if (dd > nextMax) nextMax = dd;
-        }
-        if (nextMax < 1000) nextMax = 1000; // 1ms floor, matches the display floor
-        rulerLockedScaleUs = nextMax;
-        rulerLastConfirmBeat = analyzerBeatCounter;
-      }
-    }
-    // else: implausible interval - discarded, ring buffer keeps its
-    // last valid contents instead of being contaminated by a glitch.
-  }
-  lastTickMicrosForAnalyzer = nowMicrosA;
-
   // --- BPM calculation: once per full beat (24 ticks) ---
   uint32_t nowMicros = nowMicrosForAnchor;
   bpmTickCounter++;
@@ -914,6 +877,28 @@ void handleClock() {
     }
     beatStartMicros = nowMicros;
     bpmTickCounter = 0;
+  }
+
+  // --- RUN/STOP + CLOCK trace: one sample per incoming tick, not per
+  // wall-clock interval - see MIDI_RUNSTOP_HISTORY_SIZE above. Runs
+  // before the isRunning early-return below on purpose, same as the BPM
+  // block above, so the CLOCK trace keeps showing incoming ticks even
+  // while stopped; RUN/STOP simply records isRunning as false for those.
+  bool isBeatTick = (bpmTickCounter == 0); // just wrapped a full beat this call
+  // Downbeat = this beat-completing tick will wrap currentBeat back to 0
+  // (i.e. currentBeat is currently sitting on the LAST beat of the bar,
+  // takes the active time signature into account via beatsPerBar()).
+  // Only meaningful while running - currentBeat is frozen otherwise.
+  bool isDownbeatTick = (isBeatTick && isRunning && (currentBeat == (uint16_t)(beatsPerBar() - 1))) || midiClockForceDownbeat;
+  midiClockForceDownbeat = false; // consumed - only the tick right after Start gets forced
+  midiRunStopHistory[midiRunStopHistIndex]      = isRunning;
+  midiClockPulseHistory[midiRunStopHistIndex]   = isBeatTick;
+  midiClockDownbeatHistory[midiRunStopHistIndex] = isDownbeatTick;
+  if (isBeatTick) midiClockBeatPending = true; // flashes the MIDI CLK label once per beat, see renderAnalyzer()
+  midiRunStopHistIndex++;
+  if (midiRunStopHistIndex >= MIDI_RUNSTOP_HISTORY_SIZE) {
+    midiRunStopHistIndex = 0;
+    midiRunStopHistFull = true;
   }
 
   if (!isRunning) return;
@@ -980,6 +965,7 @@ void handleStart() {
   timeIsPaused = false;
   beatStartMicros = 0; // prevents a false BPM outlier after stop/start
   bpmTickCounter  = 0;
+  midiClockForceDownbeat = true; // bar 1's downbeat has no preceding wrap to detect - see handleClock()
   lastClockTickMillis = millis(); // restart watchdog
 }
 
@@ -999,6 +985,59 @@ void handleContinue() {
     timeIsPaused = false;
   }
   lastClockTickMillis = millis(); // restart watchdog
+}
+
+void pushMidiMonEvent(uint8_t type, uint8_t channel, uint8_t data1, int16_t data2) {
+  midiMonRing[midiMonHead].type    = type;
+  midiMonRing[midiMonHead].channel = channel;
+  midiMonRing[midiMonHead].data1   = data1;
+  midiMonRing[midiMonHead].data2   = data2;
+  midiMonHead = (midiMonHead + 1) % MIDI_MON_SLOTS;
+  if (midiMonCount < MIDI_MON_SLOTS) midiMonCount++;
+}
+
+// MIDI MONITOR callbacks. Each of these pops as many entries off the RX
+// timestamp queue as the message actually occupies on the wire, mirroring
+// what handleStart()/handleStop()/handleContinue() above already do for
+// their own (always 1-byte) real-time messages - see the MIDI RX
+// TIMESTAMP QUEUE comment further up. Skipping this would leave
+// unconsumed entries piling up in the queue, later popped by handleClock()
+// instead of their own Clock byte and quietly corrupting exactly the
+// timestamps the 1.2.1 fix exists to protect.
+// Caveat: MIDI running status (a repeated status byte legally omitted on
+// the wire for consecutive same-type messages) can make the true byte
+// count 1 less than assumed here - a rare, low-impact edge case, worth a
+// closer look only if clock timing issues ever resurface specifically
+// while notes/CCs are flowing at the same time.
+void handleMonNoteOn(byte channel, byte note, byte velocity) {
+  popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); // 3-byte message
+  if (velocity == 0) {
+    // Wire-level convention: NoteOn with velocity 0 IS a NoteOff (saves a
+    // status byte under running status) - shown as NoteOff, not "NoteOn v0".
+    pushMidiMonEvent(MIDIMON_NOTE_OFF, channel, note, 0);
+  } else {
+    pushMidiMonEvent(MIDIMON_NOTE_ON, channel, note, velocity);
+  }
+}
+
+void handleMonNoteOff(byte channel, byte note, byte velocity) {
+  popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); // 3-byte message
+  pushMidiMonEvent(MIDIMON_NOTE_OFF, channel, note, 0);
+}
+
+void handleMonCC(byte channel, byte number, byte value) {
+  popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); // 3-byte message
+  pushMidiMonEvent(MIDIMON_CC, channel, number, value);
+}
+
+void handleMonPC(byte channel, byte number) {
+  popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); // 2-byte message
+  pushMidiMonEvent(MIDIMON_PC, channel, number, 0);
+}
+
+void handleMonPitchBend(byte channel, int bend) {
+  popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); popMidiRxTimestampOr(0); // 3-byte message
+  pushMidiMonEvent(MIDIMON_PB, channel, 0, (int16_t)bend);
 }
 
 // Called when no MIDI clock tick has been received for 5s, even
@@ -1050,239 +1089,150 @@ void drawDitheredBox(int x, int y, int w, int h) {
 }
 
 // ---------------------------------------------------------------------------
-// MIDI ANALYZER DISPLAY (custom button 1s hold to toggle on/off)
+// MIDI MONITOR DISPLAY (custom button 1s hold to toggle on/off)
 // ---------------------------------------------------------------------------
+void midiNoteName(uint8_t note, char* buf, size_t bufSize) {
+  static const char* NOTE_NAMES[12] = {"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};
+  int octave = (int)(note / 12) - 1;
+  snprintf(buf, bufSize, "%s%d", NOTE_NAMES[note % 12], octave);
+}
+
 void renderAnalyzer() {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_4x6_tf); // smaller than the rest of the UI, needed to fit the graph + run/stop trace
+  u8g2.setFont(u8g2_font_4x6_tf); // smaller than the rest of the UI, needed to fit the event log + run/stop trace
 
-  u8g2.drawStr(1, 6, "MIDI CLOCK ANALYZER");
+  u8g2.drawStr(1, 6, "MIDI MONITOR");
 
   noInterrupts();
-  uint8_t  histCount   = analyzerHistFull ? ANALYZER_HISTORY_SIZE : analyzerHistIndex;
-  uint8_t  histIdxSnap = analyzerHistIndex; // frozen snapshot: a tick arriving mid-render must not
-                                             // point at a different slot than the localHist copy below
-  uint32_t localHist[ANALYZER_HISTORY_SIZE];
-  for (uint8_t i = 0; i < histCount; i++) localHist[i] = tickIntervalHistory[i];
-  uint32_t lastTickMs  = lastClockTickMillis;
   bool     runningSnap = isRunning;
-  uint32_t avgRefSnap        = analyzerRunningAvgUs;
-  uint32_t lockedScaleSnap   = rulerLockedScaleUs;
+  uint32_t lastTickMs  = lastClockTickMillis;
   uint8_t  rsIdxSnap   = midiRunStopHistIndex;
   bool     rsHistSnap[MIDI_RUNSTOP_HISTORY_SIZE];
   for (uint8_t i = 0; i < MIDI_RUNSTOP_HISTORY_SIZE; i++) rsHistSnap[i] = midiRunStopHistory[i];
+  bool     clkPulseSnap[MIDI_RUNSTOP_HISTORY_SIZE];
+  for (uint8_t i = 0; i < MIDI_RUNSTOP_HISTORY_SIZE; i++) clkPulseSnap[i] = midiClockPulseHistory[i];
+  bool     clkDownbeatSnap[MIDI_RUNSTOP_HISTORY_SIZE];
+  for (uint8_t i = 0; i < MIDI_RUNSTOP_HISTORY_SIZE; i++) clkDownbeatSnap[i] = midiClockDownbeatHistory[i];
+  bool     beatFlash = midiClockBeatPending;
+  midiClockBeatPending = false; // consumed - one flash per beat, not per render frame
+  MidiMonEvent monSnap[MIDI_MON_SLOTS];
+  uint8_t monCountSnap = midiMonCount;
+  uint8_t monHeadSnap  = midiMonHead;
+  for (uint8_t i = 0; i < monCountSnap; i++) {
+    uint8_t idx = (monHeadSnap + MIDI_MON_SLOTS - monCountSnap + i) % MIDI_MON_SLOTS;
+    monSnap[i].type    = midiMonRing[idx].type;
+    monSnap[i].channel = midiMonRing[idx].channel;
+    monSnap[i].data1   = midiMonRing[idx].data1;
+    monSnap[i].data2   = midiMonRing[idx].data2;
+  }
   interrupts();
 
-  // NOTE: all text below uses snprintf(..., sizeof(line), ...) rather
-  // than sprintf() - sprintf() has no idea how big "line" is and will
-  // happily write past its end if a formatted value ever turns out
-  // longer than expected (that's what crashed the board before: two
-  // BPM figures and a jitter percentage combined into one sprintf()
-  // could exceed the buffer in an edge case). Keeping each line short
-  // AND using snprintf is belt-and-suspenders: a display glitch is
-  // now the worst case, never a crash.
-  char line[32];
+  // Top right: current BPM, one decimal place
+  char bpmBuf[14];
+  dtostrf(bpmFiltered, 4, 1, bpmBuf);
+  strncat(bpmBuf, " BPM", sizeof(bpmBuf) - strlen(bpmBuf) - 1);
+  int bpmW = u8g2.getStrWidth(bpmBuf);
+  u8g2.drawStr(126 - bpmW, 6, bpmBuf);
 
-  // Status top right: clock currently running / how long since nothing more
-  uint32_t sinceLastTick = millis() - lastTickMs;
-  char statusBuf[16];
-  if (!runningSnap) {
-    snprintf(statusBuf, sizeof(statusBuf), "STOP");
-  } else if (sinceLastTick > 999) {
-    snprintf(statusBuf, sizeof(statusBuf), "%lus", (unsigned long)(sinceLastTick / 1000));
-  } else {
-    snprintf(statusBuf, sizeof(statusBuf), "OK");
-  }
-  int stW = u8g2.getStrWidth(statusBuf);
-  u8g2.drawStr(126 - stW, 6, statusBuf);
-
-  if (histCount < 2) {
-    u8g2.drawStr(1, 16, "Waiting for clock...");
-  } else {
-    // Robust min/max detection via 5%/95% percentile instead of
-    // absolute min/max, so that individual outliers (e.g. from brief
-    // processing delays in our own code) don't distort the display.
-    uint32_t sorted[ANALYZER_HISTORY_SIZE];
-    for (uint8_t i = 0; i < histCount; i++) sorted[i] = localHist[i];
-    // simple insertion sort, histCount <= 96 -> plenty fast enough
-    for (uint8_t i = 1; i < histCount; i++) {
-      uint32_t key = sorted[i];
-      int8_t j = i - 1;
-      while (j >= 0 && sorted[j] > key) {
-        sorted[j + 1] = sorted[j];
-        j--;
-      }
-      sorted[j + 1] = key;
-    }
-    uint8_t p05idx = (histCount * 5) / 100;
-    uint8_t p95idx = (histCount * 95) / 100;
-    if (p95idx >= histCount) p95idx = histCount - 1;
-    uint32_t minIv = sorted[p05idx];
-    uint32_t maxIv = sorted[p95idx];
-
-    // Trimmed mean (same P5/P95 window as minIv/maxIv above) instead of
-    // a plain average of all samples, so a lingering outlier can't
-    // skew the graph's centerline off to one side.
-    uint32_t sumIv = 0;
-    for (uint8_t i = p05idx; i <= p95idx; i++) sumIv += sorted[i];
-    uint32_t avgIv = sumIv / (p95idx - p05idx + 1);
-    uint32_t jitter = (maxIv > minIv) ? (maxIv - minIv) : 0;
-    uint32_t jitterPct = (avgIv > 0) ? (jitter * 100 / avgIv) : 0;
-    if (jitterPct > 999) jitterPct = 999; // defensive cap, keeps the string length bounded
-
-    // most recent interval = the one directly before the current write index
-    uint32_t curIv = localHist[(histIdxSnap + ANALYZER_HISTORY_SIZE - 1) % ANALYZER_HISTORY_SIZE];
-
-    float bpmMin = (maxIv > 0) ? (60000000.0f / ((float)maxIv * 24.0f)) : 0;
-    float bpmMax = (minIv > 0) ? (60000000.0f / ((float)minIv * 24.0f)) : 0;
-    // Defensive clamp: handleClock() already keeps implausible tick
-    // intervals out of the ring buffer, so this should never trigger -
-    // but capping here too means a stray edge case can only ever
-    // produce "999.9" instead of a runaway string.
-    if (bpmMin > 999.9f) bpmMin = 999.9f;
-    if (bpmMax > 999.9f) bpmMax = 999.9f;
-
-    char bpmMinBuf[10], bpmMaxBuf[10]; // sized for "999.9"+NUL with headroom
-    dtostrf(bpmMin, 3, 1, bpmMinBuf);
-    dtostrf(bpmMax, 3, 1, bpmMaxBuf);
-    snprintf(line, sizeof(line), "IV %lu.%01lums  BPM %s-%s",
-             (unsigned long)(curIv / 1000), (unsigned long)((curIv / 100) % 10), bpmMinBuf, bpmMaxBuf);
-    u8g2.drawStr(1, 13, line);
-
-    // TEMPORARY DIAGNOSTIC: showing max render duration (last 2s
-    // window) here instead of the 16th-note jitter %, to check whether
-    // a slow render() is really what's delaying MIDI reads and
-    // polluting this very readout. Revert once confirmed either way.
-    uint32_t maxRenderMsX10 = (maxRenderUs * 10) / 1000; // e.g. 23 -> 2.3ms
-    snprintf(line, sizeof(line), "JIT +-%lu.%01lums (%lu%%) Rmax %lu.%01lums",
-             (unsigned long)(jitter / 1000), (unsigned long)((jitter / 100) % 10),
-             (unsigned long)jitterPct,
-             (unsigned long)(maxRenderMsX10 / 10), (unsigned long)(maxRenderMsX10 % 10));
-    u8g2.drawStr(1, 20, line);
-
-    const uint8_t RULER_N = 24;
-    uint8_t n = histCount < RULER_N ? histCount : RULER_N;
-    int32_t devUs[RULER_N];
-    for (uint8_t i = 0; i < n; i++) {
-      uint8_t idxr = (histIdxSnap + ANALYZER_HISTORY_SIZE - 1 - i) % ANALYZER_HISTORY_SIZE;
-      devUs[i] = (int32_t)localHist[idxr] - (int32_t)avgRefSnap;
-    }
-
-    // Scale: the persistent peak-hold value (see handleClock()) rather
-    // than just this beat's own max, so a big outlier keeps the ruler
-    // "zoomed out" for at least RULER_PEAK_HOLD_BEATS beats even after
-    // it's a beat or two in the past, instead of the scale snapping
-    // back in immediately and hiding how bad things briefly got.
-    // +20% headroom so nothing sits exactly on the edge, then rounded
-    // UP to a whole millisecond so the grid below lines up cleanly.
-    int32_t rangeUs = (int32_t)lockedScaleSnap;
-    rangeUs = rangeUs + rangeUs / 5;
-    if (rangeUs < 1000) rangeUs = 1000;
-    rangeUs = ((rangeUs + 999) / 1000) * 1000;
-    int32_t rangeMs = rangeUs / 1000;
-
-    const int axisX0 = 8, axisX1 = 120, axisY = 30, halfW = (axisX1 - axisX0) / 2;
-    const int axisCx = axisX0 + halfW;
-    u8g2.drawHLine(axisX0, axisY, axisX1 - axisX0);
-    // One gridline per whole millisecond on each side (e.g. a 6ms range
-    // draws 5 gridlines between 0 and 6, matching the ms markings a
-    // ruler would actually have) instead of an arbitrary fixed count.
-    for (int32_t m = 1; m < rangeMs; m++) {
-      int gxPos = axisCx + (int)((m * (int32_t)halfW) / rangeMs);
-      int gxNeg = axisCx - (int)((m * (int32_t)halfW) / rangeMs);
-      u8g2.drawVLine(gxPos, axisY + 1, 1);
-      u8g2.drawVLine(gxNeg, axisY + 1, 1);
-    }
-
-    // Sort ascending by deviation first, so ticks that land on the same
-    // (or an adjacent) pixel get dodged outward from smallest to
-    // largest in a consistent, symmetric-looking order rather than
-    // whatever order they happened to be found in the ring buffer.
-    for (uint8_t i = 1; i < n; i++) {
-      int32_t key = devUs[i];
-      int8_t j = i - 1;
-      while (j >= 0 && devUs[j] > key) {
-        devUs[j + 1] = devUs[j];
-        j--;
-      }
-      devUs[j + 1] = key;
-    }
-
-    // Anti-overlap: two ticks are never drawn on top of each other. If
-    // a pixel is already taken, nudge outward (checking +1, -1, +2,
-    // -2, ... from the wanted spot) to the nearest free one instead -
-    // "rather show it somewhere else" than let it disappear into
-    // another mark. With up to 24 marks on ~112px this triggers more
-    // often than before, but always finds room.
-    bool usedX[128];
-    for (int k = axisX0; k <= axisX1; k++) usedX[k] = false;
-    for (uint8_t i = 0; i < n; i++) {
-      int xr = axisCx + (int)((devUs[i] * (int32_t)halfW) / rangeUs);
-      if (xr < axisX0) xr = axisX0;
-      if (xr > axisX1) xr = axisX1;
-      int finalX = xr;
-      if (usedX[finalX]) {
-        for (int step = 1; step <= (axisX1 - axisX0); step++) {
-          int tryPos1 = xr + step;
-          int tryPos2 = xr - step;
-          if (tryPos1 <= axisX1 && !usedX[tryPos1]) { finalX = tryPos1; break; }
-          if (tryPos2 >= axisX0 && !usedX[tryPos2]) { finalX = tryPos2; break; }
+  // =========================================================================
+  // MIDI EVENT LOG: last MIDI_MON_SLOTS (6) Note/CC/Program Change/Pitch
+  // Bend messages, newest on top - older ones get pushed down a row as
+  // new ones arrive, and fall off the bottom once all 6 rows are full
+  // (see pushMidiMonEvent() above for the underlying ring buffer).
+  // Empty slots (fewer than 6 messages seen so far) show a placeholder
+  // so the layout never jumps around.
+  // =========================================================================
+  {
+    char monLine[24];
+    for (uint8_t row = 0; row < MIDI_MON_SLOTS; row++) {
+      int y = 15 + row * 6;
+      if (row < monCountSnap) {
+        // monSnap is oldest-first (see the snapshot loop above) - walk
+        // it back-to-front so row 0 shows the newest message.
+        MidiMonEvent* e = &monSnap[monCountSnap - 1 - row];
+        char noteBuf[5];
+        switch (e->type) {
+          case MIDIMON_NOTE_ON:
+            midiNoteName(e->data1, noteBuf, sizeof(noteBuf));
+            snprintf(monLine, sizeof(monLine), "CH%02d NoteOn %-3s v%d", e->channel, noteBuf, e->data2);
+            break;
+          case MIDIMON_NOTE_OFF:
+            midiNoteName(e->data1, noteBuf, sizeof(noteBuf));
+            snprintf(monLine, sizeof(monLine), "CH%02d NoteOff %-3s", e->channel, noteBuf);
+            break;
+          case MIDIMON_CC:
+            snprintf(monLine, sizeof(monLine), "CH%02d CC%-3d =%d", e->channel, e->data1, e->data2);
+            break;
+          case MIDIMON_PC:
+            snprintf(monLine, sizeof(monLine), "CH%02d PC =%d", e->channel, e->data1);
+            break;
+          case MIDIMON_PB:
+            snprintf(monLine, sizeof(monLine), "CH%02d PB %+d", e->channel, e->data2);
+            break;
         }
-      }
-      usedX[finalX] = true;
-      u8g2.drawVLine(finalX, axisY - 8, 8); // the tick itself, sitting right on the ruler
-    }
-
-    snprintf(line, sizeof(line), "-%ldms", (long)rangeMs);
-    u8g2.drawStr(axisX0 - 4, 38, line);
-    u8g2.drawStr(axisCx - 2, 38, "0");
-    snprintf(line, sizeof(line), "+%ldms", (long)rangeMs);
-    int rw = u8g2.getStrWidth(line);
-    u8g2.drawStr(axisX1 - rw + 4, 38, line);
-
-    // =======================================================================
-    // 4-BEAT TIMELINE: a chart-recorder-style trace below the ms ruler -
-    // running left (oldest) to right (newest) across the full
-    // 4-beat/96-tick window, one spike per tick. Bipolar: a tick that
-    // arrived late (positive deviation) draws upward from the center
-    // line, one that arrived early (negative) draws downward - so the
-    // direction of the deviation is visible, not just its size. Height
-    // scales the same way as the ms ruler above (max 8px = rangeUs),
-    // so "tall" means the same thing on both axes. Every tick gets a
-    // mark, like a real pen never leaving the paper - that's what
-    // makes it possible to see AT WHICH BEAT POSITION the big ones
-    // cluster, instead of just seeing isolated marks with no context.
-    // =======================================================================
-    const int tlX0 = 8, tlX1 = 120, tlCenterY = 48, tlW = tlX1 - tlX0;
-    u8g2.drawHLine(tlX0, tlCenterY, tlW);
-    uint8_t hcMinus1 = (histCount > 1) ? (histCount - 1) : 1;
-    for (uint8_t p = 0; p < histCount; p++) {
-      // p=0 is the oldest sample (left edge), p=histCount-1 the newest
-      // (right edge) - the pen sweeps this way every cycle.
-      uint8_t ticksAgo = (histCount - 1) - p;
-      uint8_t idxr = (histIdxSnap + ANALYZER_HISTORY_SIZE - 1 - ticksAgo) % ANALYZER_HISTORY_SIZE;
-      int32_t d = (int32_t)localHist[idxr] - (int32_t)avgRefSnap;
-      uint32_t ad = (uint32_t)((d < 0) ? -d : d);
-      int x = tlX0 + (int)(((uint32_t)p * (uint32_t)tlW) / hcMinus1);
-      int h = (int)(((uint64_t)ad * 8) / (uint32_t)rangeUs);
-      if (h < 1) h = 1; // the pen always leaves a mark, even for a near-perfect tick
-      if (h > 8) h = 8;
-      if (d >= 0) {
-        u8g2.drawVLine(x, tlCenterY - h, h);     // late -> up
       } else {
-        u8g2.drawVLine(x, tlCenterY + 1, h);     // early -> down
+        snprintf(monLine, sizeof(monLine), "CH-- ----");
+      }
+      u8g2.drawStr(1, y, monLine);
+    }
+  }
+
+  // =========================================================================
+  // MIDI CLOCK: one spike per beat detected in the raw incoming clock
+  // (independent of Start/Stop - see the beat-boundary detection in
+  // handleClock()), on the exact same tick-based timebase/sample grid as the
+  // RUN/STOP trace right below, so the two rows line up column-for-column.
+  // Newest sample on the left, scrolling right as it ages - matches the
+  // event log's newest-on-top direction above.
+  // =========================================================================
+  {
+    const int clkX0 = 46, clkX1 = 122, clkHighY = 49, clkLowY = 54;
+    const int clkW = clkX1 - clkX0;
+    bool noClockShowing = (millis() - lastTickMs) > 5000; // same 5s threshold as the main screen
+    if (noClockShowing) {
+      // No incoming MIDI clock for 5s - blink "NO CLOCK" in place of the
+      // label instead of the beat flash, and skip the trace below since
+      // there's nothing live to show.
+      bool blinkOn = (millis() / 500) % 2 == 0;
+      if (blinkOn) u8g2.drawStr(1, clkLowY, "NO CLOCK");
+    } else {
+      const char* clkLabel = "MIDI CLK";
+      if (beatFlash) {
+        // Beat flash: brief inverted background behind the label, one
+        // render frame long (the pending flag is consumed above), then
+        // back to normal - fires on every beat, not just the downbeat.
+        int lw = u8g2.getStrWidth(clkLabel);
+        u8g2.drawBox(0, clkLowY - 6, lw + 2, 7);
+        u8g2.setDrawColor(0);
+        u8g2.drawStr(1, clkLowY, clkLabel);
+        u8g2.setDrawColor(1);
+      } else {
+        u8g2.drawStr(1, clkLowY, clkLabel);
+      }
+      for (int x = 0; x < MIDI_RUNSTOP_HISTORY_SIZE; x++) {
+        uint8_t idx = (rsIdxSnap + x) % MIDI_RUNSTOP_HISTORY_SIZE; // oldest sample left, newest right
+        if (clkDownbeatSnap[idx]) {
+          // Downbeat (1.1, time-signature aware - see isDownbeatTick in
+          // handleClock()): drawn twice as wide as a regular beat mark.
+          int curX = clkX0 + (x * clkW) / (MIDI_RUNSTOP_HISTORY_SIZE - 1);
+          u8g2.drawBox(curX, clkHighY, 2, clkLowY - clkHighY + 1);
+        } else if (clkPulseSnap[idx]) {
+          int curX = clkX0 + (x * clkW) / (MIDI_RUNSTOP_HISTORY_SIZE - 1);
+          u8g2.drawVLine(curX, clkHighY, clkLowY - clkHighY + 1);
+        }
       }
     }
   }
 
   // =========================================================================
-  // MIDI RUN/STOP: level trace over the last ~12s, extracted from the
+  // MIDI RUN/STOP: level trace over the last MIDI_TRACE_BEATS beats, extracted from the
   // MIDI Start/Stop/Continue messages (see handleStart()/handleStop()/
   // handleContinue()) rather than a CV gate input - this board has no CV
   // inputs, so this replaces the CV I/O status area from the Eurorack
   // variant's analyzer with the MIDI-equivalent information. Current
   // state as a single "RUN = HIGH"/"RUN = LOW" label to the left of
-  // the trace, instead of a separate caption line above it.
+  // the trace, instead of a separate caption line above it. Oldest
+  // sample on the left, same direction as the MIDI CLOCK trace above.
   // =========================================================================
   {
     const int traceX0 = 46, traceX1 = 122, highY = 58, lowY = 63;
@@ -1547,11 +1497,50 @@ void render() {
     u8g2.drawVLine(centerX, nudgeY, nudgeH); // center marker, always visible
   }
 
-  // ---------------- Bottom bar: divisor cycle, fixed 32px height ----------------
-  const int lowerY = 18, lowerH = 32;
+  // ---------------- Bottom bar: divisor cycle ----------------
+  const int lowerY = 18;
   uint8_t segsPerRow = (div_ < 8) ? div_ : 8;
-  uint8_t rows = (div_ + 7) / 8; // rounded up, gives 1/2/4/8 with our values
-  int rowH = lowerH / rows;      // 32 is always evenly divisible by 1/2/4/8
+  uint8_t rows = (div_ + 7) / 8; // rounded up, gives 1/2/4/8/16 with our values
+
+  // Every 4 rows (= 32 bars at 8 cols/row) gets a genuine group
+  // separator that consumes real space - unlike the free, overwritten
+  // per-row separators below. x64 (8 rows) and x128 (16 rows) need this
+  // from the general rule; x32 (exactly 4 rows -> 0 under the general
+  // rule) additionally gets a smaller 2-row grouping instead, splitting
+  // it into two 16-bar halves; x16 (2 rows) gets its own 1-row grouping,
+  // splitting it into two 8-bar halves - none of these strictly need
+  // grouping by bar-count alone, but each rowsPerGroup/separator pair
+  // below was chosen so the leftover-pixel division against the target
+  // footprint comes out even with zero truncation waste (see the
+  // per-case comments), which incidentally also gives x32/x64 a
+  // clearly visible blank middle row instead of a thin hairline.
+  // This unavoidably makes some views taller than the old fixed 32px,
+  // so that taller footprint (set by x128, the tallest/worst case) is
+  // the shared target band every divisor view is drawn into - flush at
+  // the top always (no vertical centering: with leftover amounts this
+  // small, centering rounds inconsistently between cases and reads as
+  // misalignment rather than an intentional smaller box).
+  // Display > Grid Lines = NO reverts to the original: no grouping at
+  // all, fixed 32px footprint, exactly the pre-existing behavior.
+  uint8_t rowsPerGroup;
+  int groupSepH;
+  int refFootprintH;
+  if (settings.gridSeparatorsEnabled) {
+    if (div_ == 32)      { rowsPerGroup = 2; groupSepH = 3; } // 4 rows: (35-3)/4  = 8 exact
+    else if (div_ == 64) { rowsPerGroup = 4; groupSepH = 3; } // 8 rows: (35-3)/8  = 4 exact
+    else if (div_ == 16) { rowsPerGroup = 1; groupSepH = 1; } // 2 rows: (35-1)/2  = 17 exact
+    else                 { rowsPerGroup = 4; groupSepH = 1; } // x128: 16 rows: (35-3)/16 = 2 exact; x1/2/4/8 (1 row): no grouping applies anyway
+    refFootprintH = 35;
+  } else {
+    rowsPerGroup = rows; // rows never reaches a second group -> no separators
+    groupSepH = 0;
+    refFootprintH = 32; // original fixed height
+  }
+  uint8_t numGroups = (rows + rowsPerGroup - 1) / rowsPerGroup;
+  uint8_t numGroupSeps = (numGroups > 0) ? (numGroups - 1) : 0;
+
+  int rowH = (refFootprintH - numGroupSeps * groupSepH) / rows;
+  if (rowH < 1) rowH = 1; // safety net, never actually hit with our divisor values
 
   bool thinRows = rowH < 4; // e.g. at x128 (16 rows of 2px) -> frame/inset would no longer be visible
 
@@ -1560,7 +1549,8 @@ void render() {
 
   if (!flashHideBar) {
     for (uint8_t r = 0; r < rows; r++) {
-      int y = lowerY + r * rowH;
+      uint8_t groupsBefore = r / rowsPerGroup;
+      int y = lowerY + r * rowH + groupsBefore * groupSepH;
       for (uint8_t i = 0; i < segsPerRow; i++) {
         uint32_t globalIndex = (uint32_t)r * segsPerRow + i;
         int x0 = barX + (i * barW) / segsPerRow;       // even integer distribution
@@ -1598,7 +1588,8 @@ void render() {
     // they stay visible as a gap even on filled/blinking steps.
     u8g2.setDrawColor(0);
     for (uint8_t r = 0; r < rows; r++) {
-      int y = lowerY + r * rowH;
+      uint8_t groupsBefore = r / rowsPerGroup;
+      int y = lowerY + r * rowH + groupsBefore * groupSepH;
       for (uint8_t i = 1; i < segsPerRow; i++) {
         int x = barX + (i * barW) / segsPerRow;
         u8g2.drawVLine(x, y, rowH);
@@ -1606,14 +1597,42 @@ void render() {
     }
     // Only draw row separators when rows are tall enough, otherwise
     // the separator line would eat up most of the fill height at very
-    // thin rows (e.g. x128).
+    // thin rows (e.g. x128). Skip rows that start a new 32-bar group:
+    // those already have a real gap above them (drawn as nothing, just
+    // spacing), so erasing a "shared border" there would instead punch
+    // a hole in that row's own, otherwise complete top edge - it should
+    // stay fully closed on top, exactly like row 0 already is.
     if (!thinRows) {
       for (uint8_t r = 1; r < rows; r++) {
-        int y = lowerY + r * rowH;
+        if (r % rowsPerGroup == 0) continue;
+        uint8_t groupsBefore = r / rowsPerGroup;
+        int y = lowerY + r * rowH + groupsBefore * groupSepH;
         u8g2.drawHLine(barX, y, barW);
       }
     }
     u8g2.setDrawColor(1);
+
+    // =======================================================================
+    // x128 only: one 1px vertical tick in the last display column (x=127,
+    // just right of the grid) for every row not yet fully completed -
+    // ported from the Eurorack variant's remaining-package indicator.
+    // There, packages group 16 bars each; here a "row" is already the
+    // natural equivalent (8 bars per row at x128), so one tick per
+    // remaining row does the same job without introducing a second
+    // grouping concept. The row currently in progress blinks at the
+    // normal beat rate and loses its tick for good once fully filled -
+    // so the ticks visibly count down from 16 to 0 across the cycle.
+    // =======================================================================
+    if (div_ == 128) {
+      int tickX = barX + barW + 1; // x=127, the one spare pixel column right of the grid
+      for (uint8_t r = 0; r < rows; r++) {
+        if (r < activeRow) continue;                          // row already fully played -> tick gone
+        if (r == activeRow && !beatPulseOnNormal) continue;    // row in progress -> blinks
+        uint8_t groupsBefore = r / rowsPerGroup;
+        int y = lowerY + r * rowH + groupsBefore * groupSepH;
+        u8g2.drawVLine(tickX, y, rowH);
+      }
+    }
   }
 
   // ---------------- Footer: B+C (bar/cycle end) | time signature (H) | divisor (I) ----------------
@@ -1691,9 +1710,42 @@ void drawInvaderSprite(uint32_t animT) {
   u8g2.drawXBMP(x, 56, 8, 8, frameA ? invaderFrameA : invaderFrameB);
 }
 
-void drawBootTextFrame(const char* ramLine, const char* fwLine, bool cursorOn, uint32_t animT, uint8_t visibleLines = 4, bool showInvader = true) {
+// BarSync logo: one filled tile followed by three outlined tiles, matching
+// BarSync_logo_4tiles.svg (4x 10mm squares, 1mm gaps, first solid, rest
+// framed). At this pixel size a 1px u8g2.drawFrame() border is the natural
+// monochrome equivalent of the SVG's ~12%-of-tile-width outline stroke.
+const int LOGO_TILE = 8;
+const int LOGO_GAP  = 1;
+const int LOGO_W    = LOGO_TILE * 4 + LOGO_GAP * 3; // 35px total
+void drawBarSyncLogo(int x, int y, uint8_t filledCount) {
+  // filledCount (0-4): that many tiles from the left are drawn solid,
+  // the rest as outline only - doubles as a coarse 4-step loading bar
+  // during boot, filling up in step with the cursor blink (see
+  // computeLogoFilledCount() in showBootScreen()).
+  for (uint8_t i = 0; i < 4; i++) {
+    int tx = x + i * (LOGO_TILE + LOGO_GAP);
+    if (i < filledCount) {
+      u8g2.drawBox(tx, y, LOGO_TILE, LOGO_TILE);
+    } else {
+      u8g2.drawFrame(tx, y, LOGO_TILE, LOGO_TILE);
+    }
+  }
+}
+
+// Maps elapsed boot time to how many logo tiles should be filled: one
+// more tile at the start of every blink cycle (cursor-on + cursor-off,
+// i.e. 2x blinkPeriod), capped at 4 - so all 4 fill exactly by the time
+// the loading phase (BOOT_TEXT_DURATION) ends, in step with the cursor.
+uint8_t computeLogoFilledCount(uint32_t elapsed, uint32_t blinkPeriod) {
+  uint32_t cycle = elapsed / (blinkPeriod * 2);
+  uint32_t filled = cycle + 1;
+  return (filled > 4) ? 4 : (uint8_t)filled;
+}
+
+void drawBootTextFrame(const char* ramLine, const char* fwLine, bool cursorOn, uint32_t animT, uint8_t visibleLines = 4, bool showInvader = true, uint8_t logoFilled = 4) {
   if (visibleLines >= 1) {
-    u8g2.drawStr(2, 9,  "**BARSYNC**");
+    drawBarSyncLogo(2, 1, logoFilled);
+    u8g2.drawStr(2 + LOGO_W + 4, 9, "**BARSYNC**");
   }
 
   if (visibleLines >= 2) {
@@ -1766,7 +1818,7 @@ bool showBootScreen() {
   const uint32_t lineRevealDelay = 350; // ms per line
   for (uint8_t visibleLines = 1; visibleLines <= 4; visibleLines++) {
     u8g2.clearBuffer();
-    drawBootTextFrame(ramLine, fwLine, false, 0, visibleLines, /*showInvader=*/false);
+    drawBootTextFrame(ramLine, fwLine, false, 0, visibleLines, /*showInvader=*/false, /*logoFilled=*/0);
     u8g2.sendBuffer();
     delay(lineRevealDelay);
     if (menuEntryHoldCheck()) return true;
@@ -1779,7 +1831,7 @@ bool showBootScreen() {
     bool cursorOn = ((elapsed / blinkPeriod) % 2) == 0;
 
     u8g2.clearBuffer();
-    drawBootTextFrame(ramLine, fwLine, cursorOn, elapsed);
+    drawBootTextFrame(ramLine, fwLine, cursorOn, elapsed, 4, true, computeLogoFilledCount(elapsed, blinkPeriod));
     u8g2.sendBuffer();
     delay(frameDelay);
     if (menuEntryHoldCheck()) return true;
@@ -1802,7 +1854,7 @@ bool showBootScreen() {
     u8g2.clearBuffer();
     // Cursor keeps blinking normally during the approach, until it's hit
     bool cursorStillThere = progress < 1.0f;
-    drawBootTextFrame(ramLine, fwLine, cursorStillThere, BOOT_TEXT_DURATION);
+    drawBootTextFrame(ramLine, fwLine, cursorStillThere, BOOT_TEXT_DURATION, 4, true, /*logoFilled=*/4);
     u8g2.drawVLine(bulletX, bulletY, bulletHeight); // single shot, no beam
     u8g2.sendBuffer();
     delay(frameDelay);
@@ -1818,7 +1870,7 @@ bool showBootScreen() {
     int radius = (int)(progress * maxRadius);
 
     u8g2.clearBuffer();
-    drawBootTextFrame(ramLine, fwLine, false, BOOT_TEXT_DURATION); // cursor destroyed, stays off
+    drawBootTextFrame(ramLine, fwLine, false, BOOT_TEXT_DURATION, 4, true, /*logoFilled=*/4); // cursor destroyed, stays off
     u8g2.drawDisc(bulletX, shootEndY, radius); // growing white circle from the impact point
     u8g2.sendBuffer();
     delay(frameDelay);
@@ -1851,7 +1903,7 @@ bool showBootScreen() {
 //                                 button performs - TIMESIG/RESET 1/RESET 2)
 //       RESET >                  (page 3: MODE = QUANTIZED/INSTANT,
 //                                 PLAYTIME = also reset elapsed time?)
-//       DIVISOR >                (page 3: existing checkbox list)
+//       GRID >                   (page 3: existing checkbox list)
 //     DISPLAY >               (page 2: CONTRAST, INVERT)
 //     STANDBY                 (as before: ON/OFF + TIME)
 //     DEFAULTS                (YES/NO confirmation page)
@@ -1900,7 +1952,7 @@ uint8_t menuItemCount(MenuScreen s) {
     case SCR_TIMESIG_ENABLE:   return TIME_SIG_COUNT;
     case SCR_SWITCH_RESET:     return 2; // RESET 1 PLAYTIME, RESET 2 PLAYTIME
     case SCR_DIVISOR:          return DIVISOR_COUNT;
-    case SCR_DISPLAY:          return 2;
+    case SCR_DISPLAY:          return 3;
     case SCR_STANDBY:          return 2;
     case SCR_CONFIRM_DEFAULTS: return 2;
   }
@@ -1927,7 +1979,7 @@ const char* menuHeader(MenuScreen s) {
     case SCR_CUSTOM_ROLE:      return "CUSTOM SWITCH";
     case SCR_TIMESIG_ENABLE:   return "TIMESIGS FOR CUSTOM";
     case SCR_SWITCH_RESET:     return "RESET SWITCH";
-    case SCR_DIVISOR:          return "DIVISOR SELECT";
+    case SCR_DIVISOR:          return "GRID SELECT";
     case SCR_DISPLAY:          return "DISPLAY";
     case SCR_STANDBY:          return "STANDBY SETUP";
     case SCR_CONFIRM_DEFAULTS: return "LOAD DEFAULTS?";
@@ -1941,28 +1993,29 @@ const char* menuHeader(MenuScreen s) {
 // deeper. Deliberately WITHOUT a help footer: the explanation lives on
 // the final settings page, not on the way there.
 const char* TOP_NAV_NAMES[]  = {"SWITCHES", "DISPLAY", "STANDBY", "DEFAULTS"};
-const char* SWITCHES_NAMES[] = {"CUSTOM", "DIVISOR", "RESET"};
+const char* SWITCHES_NAMES[] = {"CUSTOM", "GRID", "RESET"};
 
 // Item names for the editable leaves that have room for a footer on
 // this display (name + value).
-const char* DISPLAY_NAMES[]      = {"CONTRAST", "INVERT"};
+const char* DISPLAY_NAMES[]      = {"CONTRAST", "INVERT", "GRID LINES"};
 
 // Short explanations of what each item is for, shown at the bottom of
 // the final settings page, set off by a divider line (see
 // renderHelpFooterSmall()). Kept to short lines that fit the 128px width at
-// this font size. The DIVISOR and TIMESIG_ENABLE checkbox pages skip
+// this font size. The GRID and TIMESIG_ENABLE checkbox pages skip
 // the footer: with up to 8/5 items there simply isn't vertical room
 // left on this 128x64 landscape display (unlike the Eurorack's taller
 // portrait screen), and the checkboxes are self-explanatory anyway.
-const char* HELP_DISPLAY[]      = {"CONTRAST: level", "INVERT: b/w swap"};
+const char* HELP_DISPLAY[]      = {"CONTRAST: level", "INVERT: b/w swap", "GRID LINES: 32-bar seps"};
 const char* HELP_STANDBY[]      = {"ON/OFF: auto sleep", "TIME: sleep delay"};
 const char* HELP_CONFIRM[]      = {"WARNING: resets", "ALL settings!"};
 
 void menuGetValueStr(MenuScreen s, uint8_t item, char* buf, size_t bufLen) {
   switch (s) {
     case SCR_DISPLAY:
-      if (item == 0) snprintf(buf, bufLen, "%u", settings.contrast);
-      else           snprintf(buf, bufLen, "%s", settings.invert ? "ON" : "OFF");
+      if (item == 0)      snprintf(buf, bufLen, "%u", settings.contrast);
+      else if (item == 1) snprintf(buf, bufLen, "%s", settings.invert ? "ON" : "OFF");
+      else                snprintf(buf, bufLen, "%s", settings.gridSeparatorsEnabled ? "YES" : "NO");
       break;
     default:
       buf[0] = '\0';
@@ -2018,12 +2071,17 @@ void renderValueList(MenuScreen s, const char* const* names, uint8_t count,
     char valBuf[16];
     menuGetValueStr(s, i, valBuf, sizeof(valBuf));
     char line[26];
-    snprintf(line, sizeof(line), "%-10s%s", names[i], valBuf);
+    snprintf(line, sizeof(line), "%-11s%s", names[i], valBuf);
     if (i == menuCursor) u8g2.drawStr(2, y, ">");
     u8g2.drawStr(12, y, line);
   }
   int footerY = MENU_Y0 + count * MENU_STEP + MENU_FOOTER_GAP;
-  renderHelpFooterSmall(footerY, helpLines, helpCount, MENU_FOOTER_PITCH);
+  // Only the currently selected item's help line, not the full list -
+  // with 3 items (since Grid Lines was added) there's only room for
+  // one footer line before it runs off the bottom of the display.
+  if (menuCursor < helpCount) {
+    renderHelpFooterSmall(footerY, &helpLines[menuCursor], 1, MENU_FOOTER_PITCH);
+  }
 }
 
 // Page 1 mixes one direct value item (TIMESIG) with plain navigation
@@ -2304,9 +2362,11 @@ void onMenuChange(bool longPress) {
         }
         settings.contrast = CONTRAST_STEPS[(idx + 1) % CONTRAST_STEP_COUNT];
         u8g2.setContrast(settings.contrast); // live preview
-      } else {
+      } else if (menuCursor == 1) {
         settings.invert = !settings.invert;
         u8g2.sendF("c", settings.invert ? 0xA7 : 0xA6); // live preview
+      } else {
+        settings.gridSeparatorsEnabled = !settings.gridSeparatorsEnabled;
       }
       break;
     case SCR_STANDBY:
@@ -2519,6 +2579,11 @@ void setup() {
   MIDI.setHandleStart(handleStart);
   MIDI.setHandleStop(handleStop);
   MIDI.setHandleContinue(handleContinue);
+  MIDI.setHandleNoteOn(handleMonNoteOn);
+  MIDI.setHandleNoteOff(handleMonNoteOff);
+  MIDI.setHandleControlChange(handleMonCC);
+  MIDI.setHandleProgramChange(handleMonPC);
+  MIDI.setHandlePitchBend(handleMonPitchBend);
   MIDI.begin(MIDI_CHANNEL_OMNI);
   MIDI.turnThruOff(); // no passthrough needed, only evaluating the clock
 
@@ -2964,8 +3029,8 @@ void runMidiWarGame() {
 // ---------------------------------------------------------------------------
 uint32_t lastRenderMs = 0;
 const uint32_t RENDER_INTERVAL_MS = 20; // more frequent updates for smoother blink transitions
-// The Analyzer screen has no blink animation to keep smooth, and its
-// render is the heaviest one on the whole board (see Rmax diagnostic).
+// The Analyzer screen has no blink animation to keep smooth, but its
+// full-buffer SPI push is still the heaviest single render on the board.
 // Refreshing it this much less often directly cuts how often that
 // multi-ms stall can even land on top of an incoming MIDI byte -
 // doesn't eliminate a single stall's length, but roughly quarters how
@@ -2977,10 +3042,9 @@ void loop() {
   // in this loop() (most notably renderAnalyzer()'s SPI framebuffer
   // push) takes a few ms, one or more clock bytes can pile up in the
   // UART's hardware FIFO in the meantime. Reading only one per
-  // iteration would then process them late and unevenly - exactly the
-  // kind of artificial jitter the Analyzer is trying to measure, so a
-  // slow display update must never get to masquerade as a signal
-  // problem. Same fix already applied in runMidiWarGame() for the
+  // iteration would then process them late and unevenly - a slow
+  // display update must never delay clock processing more than
+  // necessary. Same fix already applied in runMidiWarGame() for the
   // same reason - see the comment there.
   while (MIDI.read()) {}
 
@@ -3079,21 +3143,6 @@ void loop() {
     lastClockTickMillis = millis();
   }
 
-  // MIDI analyzer: sample the current run/stop state (derived from MIDI
-  // Start/Stop/Continue) into the ring buffer every
-  // MIDI_RUNSTOP_SAMPLE_INTERVAL_MS, regardless of whether the analyzer
-  // screen is currently shown, so its trace always has a full window of
-  // history ready as soon as you switch to it.
-  if (millis() - lastMidiRunStopSampleMs >= MIDI_RUNSTOP_SAMPLE_INTERVAL_MS) {
-    lastMidiRunStopSampleMs = millis();
-    midiRunStopHistory[midiRunStopHistIndex] = isRunning;
-    midiRunStopHistIndex++;
-    if (midiRunStopHistIndex >= MIDI_RUNSTOP_HISTORY_SIZE) {
-      midiRunStopHistIndex = 0;
-      midiRunStopHistFull = true;
-    }
-  }
-
   // Clock watchdog: the clock is running, but no tick has arrived for
   // CLOCK_LOST_TIMEOUT_MS -> treat the clock as "lost", reset
   // everything and go to STOP.
@@ -3127,18 +3176,10 @@ void loop() {
   uint32_t effectiveRenderIntervalMs = (currentMode == MODE_ANALYZER) ? ANALYZER_RENDER_INTERVAL_MS : RENDER_INTERVAL_MS;
   if (millis() - lastRenderMs >= effectiveRenderIntervalMs) {
     lastRenderMs = millis();
-    uint32_t renderStartUs = micros();
     if (currentMode == MODE_ANALYZER) {
       renderAnalyzer();
     } else {
       render();
-    }
-    lastRenderUs = micros() - renderStartUs;
-    if (millis() - maxRenderWindowStartMs > 2000) {
-      maxRenderUs = lastRenderUs; // window rolled over - start fresh
-      maxRenderWindowStartMs = millis();
-    } else if (lastRenderUs > maxRenderUs) {
-      maxRenderUs = lastRenderUs;
     }
   }
 }

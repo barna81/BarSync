@@ -11,12 +11,12 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (as of 2026-09-05)
+## Status (as of 2026-09-06)
 
 BarSync - Desktop version (this device)
-- Current firmware: 1.2.1   
-    New features: settings menu structure completely reworked, MIDI Clock Analyzer completely reworked   
-    Bugfixes: waking from standby with an already-running clock improved, short button presses now detected reliably, MIDI tick timing corrected (no more render-induced jitter)
+- Current firmware: 1.2.2
+    New features: MIDI Analyzer replaced with MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph right on the device), 32-bar grid group separators (toggleable), remaining-bars indicator at x128, BarSync logo on the boot screen
+    Other: "Divisor"/"Divisor Select" menu item finally renamed to "Grid"/"Grid Select", new contrast steps and defaults
 - Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
 - PCBs for self-assembly have arrived
 - A matching 3D-printable enclosure is available here [`enclosure`](enclosure/)
@@ -50,7 +50,7 @@ BarSync supports you during your live performance. During a show your hands are 
   tile size adapts accordingly
 - 5 selectable time signatures (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset button: two stages (short = bar end, medium/hold = cycle end) — each independently configurable whether it also resets the elapsed play time (default: yes). Plus a standalone "SET 1.1" function (default custom-button role) to instantly re-anchor the beat pattern, either quantized (rounded to the nearest beat) or instant (raw tick) — selectable in the settings menu
-- Built-in MIDI analyzer (jitter, interval, BPM range) right on the device
+- MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph) right on the device
 - Nudge mode for manually compensating clock phase drift
 - MIDI-Thru
 - Standby (light sleep) on MIDI inactivity
@@ -65,13 +65,15 @@ Quick overview — full guide in
 | Button | Function |
 |---|---|
 | Custom button (short) | SET 1.1 (re-anchor beat pattern)* |
-| Custom button (hold 1s) | Toggle MIDI analyzer* |
+| Custom button (hold 1s) | Toggle MIDI Monitor* |
 | Grid (short) | Change the number of bars shown in the grid (x1–x128) |
 | Reset (short/medium) | Reset stage 1/2 |
 | Custom button + Grid together | Toggle nudge mode* |
 | Hold Reset 1s at boot | Settings menu |
 
 *The custom button is freely assignable — the functions shown here reflect the current firmware default.
+
+In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
 
 ## Cool! How do I get one?

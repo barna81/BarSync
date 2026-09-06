@@ -2,6 +2,67 @@
 
 *[English version](CHANGELOG.en.md)*
 
+## Firmware v1.2.2 (06.09.2026)
+
+**MIDI-Analyzer durch MIDI Monitor ersetzt.** Die bisherige Jitter-Analyse
+(Abweichungs-Grafik, Peak-Hold-Skalierung) ist komplett entfernt — der
+Nutzen stand in keinem Verhältnis zur Komplexität, und der zugehörige
+Render-Zeit-Diagnosewert (`Rmax`) war ohnehin nur ein temporäres
+Debug-Hilfsmittel. Der Screen (weiterhin per 1s-Halten des Custom-Tasters
+erreichbar) zeigt jetzt:
+
+- **Note/CC/Program-Change/Pitch-Bend-Log**: die letzten 6 empfangenen
+  Nachrichten, neueste oben, ältere rutschen nach unten und fallen nach
+  6 Einträgen raus. Reiner FIFO-Puffer ohne Kanal-Deduplizierung.
+- **MIDI-Clock-Graph**: ein Peak pro erkanntem Beat, unabhängig von
+  Start/Stop (zeigt also auch ein anliegendes, aber gestopptes Signal).
+  Läuft jetzt exakt 8 Beats breit, die Sample-Rate skaliert also
+  automatisch mit dem Tempo. Die 1.1 (Taktanfang, taktart-abhängig)
+  wird als doppelt breiter Strich markiert. Das "MIDI CLK"-Label
+  blinkt im Beat-Takt invertiert und zeigt "NO CLOCK" (blinkend), wenn
+  5s lang kein Clock-Byte ankam.
+- **RUN/STOP-Trace**: Pegel-Verlauf auf derselben Zeitbasis wie der
+  Clock-Graph.
+- **BPM-Anzeige** oben rechts, eine Nachkommastelle.
+- Der Reset-Taster löscht in diesem Screen die Note/CC-Liste, statt
+  die normale Reset-1/2-Funktion auszulösen.
+
+**Divisor/Grid-Menü: sichtbare Bezeichnung final auf "Grid" umgestellt.**
+Nachdem der Taster-Aufdruck und alle Dokumente bereits im letzten
+Update auf "Grid" umbenannt wurden, hieß der zugehörige Menüpunkt im
+Setup selbst (`SWITCHES > DIVISOR` / `DIVISOR SELECT`) intern noch
+"Divisor". Jetzt konsistent `GRID` / `GRID SELECT`. Interne
+Firmware-Bezeichner (`divisorIndex`, `PIN_BTN_DIVISOR`, `SCR_DIVISOR`
+usw.) bleiben unverändert, wie schon beim Taster-Rename.
+
+**Grid-Ansicht: 32-Bar-Trennlinien für x16/x32/x64/x128**, jeweils mit
+eigens berechneter Trennstärke, damit die Gesamthöhe für alle
+Divisor-Ansichten exakt gleich bleibt (35px, vorher fix 32px). Neu
+abschaltbar über `DISPLAY > GRID LINES` (Ja/Default, Nein = ursprüngliche
+Darstellung ohne jede Gruppierung).
+
+**x128-Ansicht: Resttakte-Anzeige ganz rechts** (angelehnt an die
+Eurorack-Version) — ein Strich pro noch nicht durchlaufener Zeile
+(= 8 Bars), zählt sichtbar von 16 auf 0 runter, aktuelle Zeile blinkt
+im Beat-Takt.
+
+**Neue Kontraststufen und Standardwerte:**
+- Kontraststufen jetzt `25/50/100/150/200/255` (vorher
+  `50/100/150/200/255`), Default 50 (vorher 255).
+- Grid Select (Divisor-Auswahl) startet jetzt mit x4–x128 aktiviert
+  (x1/x2 deaktiviert) statt allen — entspricht dem Werksdefault der
+  Eurorack-Version.
+
+**Bootscreen: BarSync-Logo ergänzt**, links neben dem
+"**BARSYNC**"-Schriftzug — die vier Kacheln füllen sich synchron zum
+Blink-Takt der Ladeanzeige, sind spätestens nach 4 Blinkzyklen
+vollständig gefüllt.
+
+Betrifft: `firmware/barsync.ino`. Keine Hardware-Änderungen in dieser
+Version.
+
+---
+
 ## Hardware Rev. 1.2 (05.09.2026)
 
 **Taster-Netzname im Schaltplan/Netzliste von "Divisor Switch" auf

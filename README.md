@@ -11,12 +11,12 @@ einem 128×64-OLED-Display anzeigt.
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 05.09.2026)
+## Status (Stand 06.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.2.1     
-    Neue Funktionen: Setup-Menü-Struktur komplett überarbeitet, MIDI Clock Analyzer komplett überarbeitet   
-    Bugfixes: Aufwachen aus Standby bei bereits laufendem Clock verbessert, kurze Tastendrücke werden zuverlässig erkannt, Zeitmessung der MIDI-Ticks korrigiert (kein render-bedingter Jitter mehr)
+- Aktueller FW Stand 1.2.2
+    Neue Funktionen: MIDI-Analyzer durch MIDI Monitor ersetzt (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph direkt am Gerät), Grid-Trennlinien alle 32 Bars (abschaltbar), Resttakte-Anzeige bei x128, BarSync-Logo im Bootscreen
+    Sonstiges: Menüpunkt "Divisor"/"Divisor Select" final auf "Grid"/"Grid Select" umbenannt, neue Kontraststufen und Standardwerte
 - Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
 - Platinen zum selbst Bestücken sind angekommen
 - Ein passendes, 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)
@@ -50,7 +50,7 @@ BarSync unterstützt dich bei deiner Live-Performance. Während einer Show hast 
   Kachelgröße passt sich an
 - 5 wählbare Taktarten (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset-Taster: zwei Stufen (kurz = Taktende, mittel/halten = Zyklusende) — pro Stufe getrennt einstellbar, ob dabei auch die Spielzeit zurückgesetzt wird (Default: ja). Zusätzlich eine eigenständige "SET 1.1"-Funktion (Standardbelegung des Custom-Tasters) zum sofortigen Neusetzen des Beatmusters, quantisiert (auf den nächstgelegenen Beat gerundet) oder sofort (roher Tick) — im Einstellungsmenü wählbar
-- MIDI-Analyzer (Jitter, Intervall, BPM-Range) direkt am Gerät
+- MIDI Monitor (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph) direkt am Gerät
 - Nudge-Modus zum manuellen Ausgleich von Clock-Phasendrift
 - MIDI-Thru
 - Standby (Light Sleep) bei MIDI-Inaktivität
@@ -65,13 +65,15 @@ Kurz zusammengefasst — vollständige Anleitung in
 | Taste | Funktion |
 |---|---|
 | Custom-Taster (kurz) | SET 1.1 (Beatmuster neu setzen)* |
-| Custom-Taster (1s halten) | MIDI-Analyzer ein/aus* |
+| Custom-Taster (1s halten) | MIDI Monitor ein/aus* |
 | Grid (kurz) | Anzahl der angezeigten Takte im Grid wechseln (x1–x128) |
 | Reset (kurz/mittel) | Reset-Stufe 1/2 |
 | Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus* |
 | Reset beim Booten 1s halten | Einstellungsmenü |
 
 *Der Custom-Taster ist frei belegbar — die hier gezeigten Funktionen entsprechen der aktuellen Firmware-Voreinstellung.
+
+Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
 
 
 ## Cool! Wie komme ich da ran?

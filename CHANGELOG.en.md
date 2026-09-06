@@ -2,6 +2,65 @@
 
 *[Deutsche Version](CHANGELOG.md)*
 
+## Firmware v1.2.2 (2026-09-06)
+
+**MIDI Analyzer replaced with MIDI Monitor.** The previous jitter
+analysis (deviation graph, peak-hold scaling) has been removed
+entirely — the benefit no longer justified the complexity, and the
+associated render-time diagnostic (`Rmax`) was only ever a temporary
+debug aid anyway. The screen (still reached by holding the custom
+button for 1s) now shows:
+
+- **Note/CC/Program Change/Pitch Bend log**: the last 6 received
+  messages, newest on top, older ones pushed down and dropped after
+  6 entries. Plain FIFO buffer, no per-channel dedup.
+- **MIDI clock graph**: one spike per detected beat, independent of
+  Start/Stop (so it still shows an incoming-but-stopped signal). Now
+  always exactly 8 beats wide, so the sample rate automatically scales
+  with tempo. The downbeat (1.1, time-signature aware) is marked with
+  a double-width spike. The "MIDI CLK" label flashes inverted on the
+  beat, and shows a blinking "NO CLOCK" if no clock byte has arrived
+  for 5s.
+- **RUN/STOP trace**: level trace on the same timebase as the clock
+  graph.
+- **BPM readout** top right, one decimal place.
+- The reset button clears the Note/CC log on this screen instead of
+  triggering the normal Reset 1/2 function.
+
+**Divisor/Grid menu: visible label finally switched to "Grid".** After
+the button silkscreen and all documents were already renamed to "Grid"
+in the last update, the corresponding setup menu item itself
+(`SWITCHES > DIVISOR` / `DIVISOR SELECT`) still internally said
+"Divisor". Now consistently `GRID` / `GRID SELECT`. Internal firmware
+identifiers (`divisorIndex`, `PIN_BTN_DIVISOR`, `SCR_DIVISOR`, etc.)
+are unchanged, same as with the button rename.
+
+**Grid view: 32-bar group separators for x16/x32/x64/x128**, each with
+its own separator thickness so the overall height stays exactly
+identical across every divisor view (35px, previously a fixed 32px).
+Can now be turned off via `DISPLAY > GRID LINES` (Yes/default,
+No = original layout with no grouping at all).
+
+**x128 view: remaining-bars indicator on the right edge** (adopted
+from the Eurorack variant) — one tick per row (= 8 bars) not yet
+played through, visibly counting down from 16 to 0, current row
+blinks on the beat.
+
+**New contrast steps and defaults:**
+- Contrast steps now `25/50/100/150/200/255` (previously
+  `50/100/150/200/255`), default 50 (previously 255).
+- Grid Select (divisor selection) now starts with x4–x128 enabled
+  (x1/x2 disabled) instead of all — matches the Eurorack variant's
+  factory default.
+
+**Boot screen: BarSync logo added**, to the left of the "**BARSYNC**"
+text — the four tiles fill up in step with the loading blink cadence,
+fully filled after at most 4 blink cycles.
+
+Affects: `firmware/barsync.ino`. No hardware changes in this version.
+
+---
+
 ## Hardware Rev. 1.2 (2026-09-05)
 
 **Button net name in the schematic/netlist renamed from "Divisor
@@ -58,130 +117,132 @@ instead of always snapping backward to the beat that already passed.
   `SET 1.1` (**new default**) — `RESET 1`/`RESET 2` are removed
   entirely as custom-button roles (the physical reset button keeps its
   two stages unchanged).
-- With `FUNCTION = TIMESIG` selected, a new **`TIMESIGS >`** item
-  appears below it — a checkbox list of which of the five time
-  signatures the custom button cycles through (default: all). The
-  fixed value on page 1 (`SETUP > TIMESIG`) is unaffected and still
-  cycles through all five.
-- With `FUNCTION = SET 1.1` selected, a new **`MODE`** item
-  (QUANTIZED/INSTANT) appears below it directly — the setting that
-  used to live under `Switches > Reset` has moved here, since it only
-  ever concerned SET 1.1.
+- With `FUNCTION = TIMESIG` set, a new **`TIMESIGS >`** entry appears
+  below it — a checkbox list of which of the five time signatures the
+  custom button cycles through (default: all). The fixed time
+  signature value on page 1 (`SETUP > TIMESIG`) is unaffected and
+  still rotates through all five.
+- With `FUNCTION = SET 1.1` set, a new **`MODE`** (QUANTIZED/INSTANT)
+  appears directly below it instead — the setting that used to live
+  under `Switches > Reset` has moved here, since it only ever affects
+  SET 1.1.
 - `Switches > Custom Switch` (formerly "Custom Role") and
   `Switches > Reset Switch` (formerly "Reset") renamed.
 - `Switches > Reset Switch` now has **`RESET 1`** and **`RESET 2`**
-  (both yes/no, default yes) — configurable per stage: whether that
-  stage also resets the elapsed play time. The bar counter/grid always
-  resets regardless (no separate toggle for that anymore - the
-  short-lived `BARCOUNTER` option is removed again). SET 1.1 is
-  unaffected and always resets everything.
+  (both Yes/No, default Yes) — independently configurable per stage
+  whether it also resets the elapsed play time. The bar counter/grid
+  always resets regardless (no separate switch for that anymore - the
+  `BARCOUNTER` option introduced in the meantime is removed again).
+  SET 1.1 is unaffected by this and always resets everything.
 - **Menu visually unified:** every settings page now uses the same
-  grid (item spacing, position of the explanation text, font size for
-  explanations) — previously this varied from page to page (e.g. 8px
-  here, 12px there). Explanation text now also consistently uses the
-  smaller font throughout.
+  grid (item spacing, explanation position, explanation font size) -
+  previously this differed from page to page (e.g. 8px here, 12px
+  there). The explanation text also now consistently runs in the
+  smaller font.
 
-**Bugfix: BarSync wouldn't respond properly after standby (light
-sleep) until the sequencer's second RUN/Start command — and the
-original fix for that caused an even worse follow-up bug.**
+**Bugfix: BarSync only responded to the second RUN/Start command from
+the sequencer after standby (light sleep) - and the original fix for
+this caused an even worse follow-on bug.**
 
-Root cause of the original bug: GPIO-level wakeup on the MIDI RX line
-only guarantees the CPU wakes up - not that the UART peripheral
-cleanly receives the exact byte that triggered the wakeup (the clock
-supply needs a brief moment to stabilize after light sleep).
+Root cause of the original bug: the GPIO level wakeup on the MIDI RX
+line only guarantees that the CPU wakes up - not that the UART
+peripheral cleanly receives the very byte that triggered the wakeup
+(the clock supply needs a brief moment to stabilize after light
+sleep).
 
-The original fix (flush the UART buffer after waking, plus call
-`MIDI.begin()` again) didn't actually fix that, and introduced a worse
-bug instead: if the clock was already running when it woke us up, the
-flush also discarded the genuine Start message and any Clock ticks
-that had already queued up - `isRunning` never got set, and the
-counter/time/grid just stayed completely frozen at their pre-sleep
-state until an unrelated, fresh Stop+Start cycle came through later.
-`MIDI.begin()` carries the same risk indirectly, since this library
-re-initializes the transport internally, which can reset the
-underlying HardwareSerial and just as easily wipe its buffer.
+The original fix (clearing the UART buffer after waking + calling
+`MIDI.begin()` again) didn't fix the problem, though - it replaced it
+with a worse one: if a MIDI clock was already running when it woke up
+(sequencer already playing), clearing the buffer also discarded the
+real Start command and any clock ticks that had already arrived -
+`isRunning` stayed false, counters/time/grid stayed completely frozen
+at their pre-sleep state until a fresh, independent Stop+Start pair
+came through. `MIDI.begin()` carries the same risk indirectly, since
+the library re-initializes the transport internally, which can also
+reset the underlying UART and clear its buffer.
 
-**Final fix:** both the buffer flush and the `MIDI.begin()` call are
-removed again. A short settle delay after waking is enough on its own:
-MIDI real-time messages (Clock/Start/Stop/Continue) are single bytes
-that, unlike channel messages, don't rely on "running status", so they
-can't desync the parser even if that one byte happens to arrive
-corrupted. The beat-extrapolation anchor (`lastTickAnchorMicros`) is
-still reset on wake, so a stale pre-sleep timestamp can't briefly
-cause a wrong display.
+**Final fix:** both (buffer-clearing and the `MIDI.begin()` call)
+removed again. All that's left is a brief stabilization pause after
+waking - which is enough, since MIDI real-time messages (Clock/Start/
+Stop/Continue) are single bytes that, unlike channel messages, don't
+expect "running status" and therefore can't throw the parser off step,
+even if that one byte happens to arrive corrupted. The beat
+extrapolation anchor (`lastTickAnchorMicros`) is also still reset on
+waking, so no stale pre-sleep timestamp can briefly cause a wrong
+display.
 
 **Reset logic reworked**, inspired by concepts from the Eurorack
-version, but arrived at its own independent design after a few
-iterations:
+version, but with its own distinct result after several iterations:
 
 - Only **two reset stages** on the physical button (Reset 1/Reset 2)
-  instead of three — stage 3 is removed. Short press = Reset 1, held
-  past 1s = Reset 2 (press mechanism unchanged).
-- **Reset 1** still waits for the **end of the current bar**, **Reset
-  2** for the **end of the divisor cycle** - exactly as before; both
-  operate within whichever beat pattern is currently active, without
-  ever changing it themselves.
-- **New: `SET 1.1`** — a standalone, immediate-acting function, only
+  instead of three - stage 3 is gone. Short press = Reset 1, hold past
+  1s = Reset 2 (press mechanics unchanged).
+- **Reset 1** still waits for the **end of the current bar** as
+  before, **Reset 2** for the **end of the divisor cycle** - both
+  operate within whatever beat pattern is currently active, without
+  changing it themselves.
+- **New: `SET 1.1`** - a standalone, instant-acting function, only
   assignable to the custom button via `Switches > Custom > FUNCTION`
-  (not reachable from the physical reset button). Immediately
-  establishes a new "1.1" anchor, spinning up a brand new beat pattern
-  that Reset 1 and 2 then keep operating within. Configurable via
-  `Switches > Reset > MODE`:
-  - **QUANTIZED** (default): rounds the new anchor down to the nearest
-    already-existing beat in the current grid - the existing beat
-    pattern (since MIDI Start, or an earlier SET 1.1) stays exactly in
-    phase, only our own count gets realigned to the sequencer. Example:
-    the display reads bar 1, beat 2, tick 1 - SET 1.1 pulls the new 1.1
-    exactly to where beat 2 had just started.
-  - **INSTANT**: uses the exact raw tick of the trigger instead,
+  (not reachable via the physical reset button). Immediately
+  establishes a new "1.1" anchor, spinning up a brand new beat
+  pattern within which Reset 1 and 2 then keep operating. Configurable
+  via `Switches > Reset > MODE`:
+  - **QUANTIZED** (default): rounds the new anchor down to the
+    nearest beat boundary already existing in the current grid - the
+    existing beat pattern (since MIDI Start or a previous SET 1.1)
+    stays in phase, only our own count is nudged back in line with
+    the sequencer. Example: the display sits at bar 1, beat 2, tick 1
+    - SET 1.1 pulls the new 1.1 to exactly where the 1.2 just was.
+  - **INSTANT**: uses the exact raw tick of the trigger as-is,
     spinning up a brand new beat pattern independent of the previous
     grid.
-- New setting `Switches > Reset > PLAYTIME` (yes/no, default yes):
-  whether a reset (1, 2, or SET 1.1) also resets the elapsed play time
-  - independent of which of the three it is.
-- **Flash feedback adopted from the Eurorack:** after any reset action,
-  "RESET 1"/"RESET 2"/"SET 1.1" now blinks exactly 2x in time with the
-  beat (instead of time-based), in addition to the existing brief
-  instant flash.
+- New setting `Switches > Reset > PLAYTIME` (Yes/No, default Yes):
+  whether a reset (1, 2, or SET 1.1) also resets the elapsed play
+  time - independent of which of the three functions it is.
+- **Flash feedback adopted from the Eurorack:** after every reset
+  action, "RESET 1"/"RESET 2"/"SET 1.1" now blinks exactly 2x on the
+  beat (instead of time-based), in addition to the brief instant flash
+  animation.
 
 **The custom button is now freely assignable** (`Switches > Custom`),
 instead of permanently cycling the time signature:
 
 - New setting `Switches > Custom > FUNCTION` with four possible roles:
   `TIMESIG` (default, previous behavior), `RESET 1`, `RESET 2`,
-  `SET 1.1`. The two reset roles directly trigger the matching,
-  already-existing reset stage with a single short press — no need for
-  the differently-timed hold that the reset button itself still
-  requires; they wait for the bar/cycle end exactly like the physical
-  button. `SET 1.1` instead always acts immediately (see above).
-- Time signature is decoupled from button cycling for this and now
-  lives as its **own fixed item on page 1** (`SETUP > TIMESIG`),
-  directly cycling between the five implemented time signatures
-  (default: 4/4). The previous enable/disable screen for restricting
-  which time signatures were reachable via button cycling
-  (`Switches > Timesig`) is removed entirely — without a dedicated
-  time-signature button it no longer served a purpose; all five time
+  `SET 1.1`. The two reset roles directly trigger the correspondingly
+  named, already-existing reset stage - with a single short press,
+  without the otherwise-required differently-timed hold on the reset
+  button itself; they wait for the bar/cycle end just like the
+  physical button normally would. `SET 1.1`, by contrast, always acts
+  instantly (see above).
+- The time signature has been decoupled from the button cycle for
+  this and now lives **fixed as its own menu item on page 1**
+  (`SETUP > TIMESIG`), directly switchable between the five existing
+  time signatures (default: 4/4). The previous screen for showing/
+  hiding individual time signatures for button cycling
+  (`Switches > Timesig`) is gone without replacement - it no longer
+  made sense without a dedicated time-signature button; all five time
   signatures are now always reachable.
 - Holding the custom button for 1s (toggle MIDI analyzer), the nudge
   combo (Custom+Divisor), and the MidiWar easter egg (Custom+Reset)
-  are unchanged and work regardless of the assigned role.
+  remain unchanged and work independently of the chosen role.
 
-**Settings menu fundamentally reworked**, adopted from the Eurorack
-firmware's multi-level menu redesign (dated 2026-08-30 there) and
+**Settings menu fundamentally reworked**, adopted from the multi-level
+menu redesign of the Eurorack firmware (there as of 2026-08-30) -
 adapted for the desktop version:
 
-- The menu is now two levels deep (`SETUP > SWITCHES/DISPLAY/STANDBY/
-  DEFAULTS > detail page`) instead of a flat 6-item list. DIVISOR and
-  the new RESET item now live under `SWITCHES` (alongside `CUSTOM`),
-  CONTRAST and INVERT under `DISPLAY`.
-- A short one/two-line explanation now appears at the bottom of the
-  detail pages (DISPLAY, STANDBY, CUSTOM, RESET), where the 128x64
-  landscape display has room for it. Deliberately omitted on DIVISOR
-  SELECT — with up to 8 entries there's no vertical room left for it
-  (unlike the Eurorack's taller portrait display), and the checkboxes
-  are self-explanatory regardless.
-- `DEFAULTS` now asks via its own YES/NO confirmation page instead of
-  the previous "press again to confirm" flow.
+- Menu is now two-tiered (`SETUP > SWITCHES/DISPLAY/STANDBY/DEFAULTS >
+  detail page`) instead of a flat 6-item list. DIVISOR and the new
+  RESET live under `SWITCHES` (now alongside `CUSTOM`), CONTRAST and
+  INVERT under `DISPLAY`.
+- A brief explanation at the bottom of the screen on the detail pages
+  (DISPLAY, STANDBY, CUSTOM, RESET), where there's room for it on the
+  128×64 landscape display. Deliberately left out on DIVISOR SELECT -
+  with up to 8 entries there's no vertical room left for it (unlike
+  the Eurorack version's taller portrait display), but the checkboxes
+  are self-explanatory anyway.
+- `DEFAULTS` now asks via its own YES/NO confirmation page, instead of
+  the previous "press again to confirm".
 - **Not adopted:** the Eurorack version's CV Inputs category (no CV
   hardware on this board) and `DISPLAY > ROTATE` (this unit is
   permanently mounted in landscape, no runtime rotation needed).
