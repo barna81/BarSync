@@ -1,123 +1,122 @@
 # BarSync
 
-*[English version](README.en.md)*
+*[Deutsche Version](README.de.md)*
 
 **MIDI Clock Bar Counter & Visualizer**    -*Always in Time.*-
 
-BarSync ist ein ESP32-basiertes Gerät, das eine eingehende MIDI-Clock empfängt
-und Bar-Position, Beat-Fortschritt, Tempo und verstrichene Spielzeit auf
-einem 128×64-OLED-Display anzeigt.
+BarSync is an ESP32-based device that receives an incoming MIDI clock and
+displays bar position, beat progress, tempo, and elapsed play time on a
+128×64 OLED display.
 
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 06.09.2026)
+## Status (as of 2026-09-06)
 
-BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.2.2  
-    Neue Funktionen: MIDI-Analyzer durch MIDI Monitor ersetzt (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph direkt am Gerät), Grid-Trennlinien alle 32 Bars (abschaltbar), Resttakte-Anzeige bei x128, BarSync-Logo im Bootscreen  
-    Sonstiges: Menüpunkt "Divisor"/"Divisor Select" final auf "Grid"/"Grid Select" umbenannt, neue Kontraststufen und Standardwerte
-- Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
-- Platinen zum selbst Bestücken sind angekommen
-- Ein passendes, 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)
-- Bausatz zum Selbstlöten ist bei entsprechendem Interesse angedacht
+BarSync - Desktop version (this device)
+- Current firmware: 1.2.2  
+    New features: MIDI Analyzer replaced with MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph right on the device), 32-bar grid group separators (toggleable), remaining-bars indicator at x128, BarSync logo on the boot screen  
+    Other: "Divisor"/"Divisor Select" menu item finally renamed to "Grid"/"Grid Select", new contrast steps and defaults
+- Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
+- PCBs for self-assembly have arrived
+- A matching 3D-printable enclosure is available here [`enclosure`](enclosure/)
+- A solder-it-yourself kit is being considered, depending on interest
 
-BarSync - Eurorackversion (in Entwicklung und noch nicht auf Github)
-- Code fertig
-- PCB-Layout fertig und bestellt
-- Schaltplan und PCB-Layout folgen
-- 3D-druckbarer Rahmen für Eurorack ist in Entwicklung
+BarSync - Eurorack version (in development, not yet on GitHub)
+- Code finished
+- PCB layout finished and ordered
+- Schematic and PCB layout to follow
+- 3D-printable Eurorack frame is in development
 
-*(Bei Interesse am Bausatz und der Eurorackversion: Issue hier im Repo eröffnen oder Kontakt aufnehmen.)*
+*(Interested in the kit or the Eurorack version? Open an issue in this repo or get in touch.)*
 
 
 ---
 
 
-## Was ist das hier?
+## What is this?
 Never miss the drop...
 
-Mit BarSync behältst du den Überblick über das Arrangement deines Tracks — live oder im Studio. Damit du jederzeit weisst, in welchen Takt du dich befindest, damit Drops, Breaks und Builds dich nie überraschen.
+BarSync keeps you locked into your track's arrangement — live or in the studio. Know exactly where you stand in the bar count, so drops, breaks and builds never catch you off guard.
 
-Weil ich auf dem Markt oder in der DIY-Szene kein ähnliches Gerät gefunden habe, habe ich den BarSync entwickelt.
-BarSync unterstützt dich bei deiner Live-Performance. Während einer Show hast du meist alle Hände voll zu tun, da verliert man schnell den Überblick übers Timing. Kein Im-Kopf-Taktezählen mehr, damit der Drop im richtigen Moment einsetzt: BarSync zählt und visualisiert die verstrichenen Takte seit einem Startpunkt, den du selbst festlegst. Entweder ist dies das erste MIDI-Clock-Signal deines Sequencers, oder du setzt ihn per Reset-Taster jederzeit neu. So weißt du immer, in welchem Takt du dich befindest. Die Visualisierung passt sich dabei deinen Bedürfnissen an (1-128 Bars bzw. Takte können angezeigt werden).
+Since I couldn't find anything similar on the market or in the DIY scene, I built BarSync.
+BarSync supports you during your live performance. During a show your hands are usually full, and it's easy to lose track of the timing. No more counting bars in your head to land the drop at the right moment: BarSync counts and visualizes the bars elapsed since a starting point you define yourself. That starting point can be the first MIDI clock signal from your sequencer, or you can reset it at any time with the reset button. This way you always know exactly which bar you're in. The visualization adapts to your needs (1-128 bars can be displayed).
 
 
 ## Features
 
-- Bar-/Beat-Zähler, synchron zur eingehenden MIDI-Clock (24 PPQN)
-- Grid-Fortschrittsbalken (x1 bis x128 Bars), Grundfläche bleibt konstant,
-  Kachelgröße passt sich an
-- 5 wählbare Taktarten (2/4, 3/4, 4/4, 5/4, 7/8)
-- Reset-Taster: zwei Stufen (kurz = Taktende, mittel/halten = Zyklusende) — pro Stufe getrennt einstellbar, ob dabei auch die Spielzeit zurückgesetzt wird (Default: ja). Zusätzlich eine eigenständige "SET 1.1"-Funktion (Standardbelegung des Custom-Tasters) zum sofortigen Neusetzen des Beatmusters, quantisiert (auf den nächstgelegenen Beat gerundet) oder sofort (roher Tick) — im Einstellungsmenü wählbar
-- MIDI Monitor (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph) direkt am Gerät
-- Nudge-Modus zum manuellen Ausgleich von Clock-Phasendrift
+- Bar/beat counter, synced to the incoming MIDI clock (24 PPQN)
+- Grid progress bar (x1 to x128 bars) — overall area stays constant,
+  tile size adapts accordingly
+- 5 selectable time signatures (2/4, 3/4, 4/4, 5/4, 7/8)
+- Reset button: two stages (short = bar end, medium/hold = cycle end) — each independently configurable whether it also resets the elapsed play time (default: yes). Plus a standalone "SET 1.1" function (default custom-button role) to instantly re-anchor the beat pattern, either quantized (rounded to the nearest beat) or instant (raw tick) — selectable in the settings menu
+- MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph) right on the device
+- Nudge mode for manually compensating clock phase drift
 - MIDI-Thru
-- Standby (Light Sleep) bei MIDI-Inaktivität
-- Einstellungsmenü direkt am Gerät (keine App/Software nötig)
+- Standby (light sleep) on MIDI inactivity
+- On-device settings menu (no app or software required)
 
 
-## Bedienung
+## Operation
 
-Kurz zusammengefasst — vollständige Anleitung in
-[`docs/BarSync_Quickstart_DE.pdf`](docs/BarSync_Quickstart_DE.pdf):
+Quick overview — full guide in
+[`docs/BarSync_Quickstart_EN.pdf`](docs/BarSync_Quickstart_EN.pdf):
 
-| Taste | Funktion |
+| Button | Function |
 |---|---|
-| Custom-Taster (kurz) | SET 1.1 (Beatmuster neu setzen)* |
-| Custom-Taster (1s halten) | MIDI Monitor ein/aus** |
-| Grid (kurz) | Anzahl der angezeigten Takte im Grid wechseln (x1–x128) |
-| Reset (kurz/mittel) | Reset-Stufe 1/2 |
-| Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus |
-| Reset beim Booten 1s halten | Einstellungsmenü |
+| Custom button (short) | SET 1.1 (re-anchor beat pattern)* |
+| Custom button (hold 1s) | Toggle MIDI Monitor** |
+| Grid (short) | Change the number of bars shown in the grid (x1–x128) |
+| Reset (short/medium) | Reset stage 1/2 |
+| Custom button + Grid together | Toggle nudge mode |
+| Hold Reset 1s at boot | Settings menu |
 
-*Im Setup einstellbar: Custom-Taster zum Durchschalten der Taktarten oder SET1.1 (default)  
-**Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
-
-
-## Cool! Wie komme ich da ran?
-
-Wenn Du das Gerät nachbauen möchtest siehe [LICENSE](LICENSE), findest Du hier die entsprechende Firmware, den Schaltplan und die Teileliste. Ich habe auch eine Platine entwickelt, deren Layout ebenfalls hier zu finden ist. Da es sich aber um ein recht einfaches Layout handelt, kannst Du auch eine Lochrasterplatine oder sogar ein Breadboard benutzen, um den BarSync nachzubauen. Darüber hinaus ist Basiswissen im Umgang mit dem ESP32, dem Lötkolben sowie der Elektronik von Vorteil.
-
-Kurz zusammengefasst: Aktuell befindet sich das Projekt noch im kompletten DIY-Stadium. Bei entsprechender Resonanz gedenke ich, einen Bausatz für den Barsync anzubieten. Dieser käme dann mit einem 3D-gedruckten Gehäuse, einer Platine und allen benötigten elektronischen Bauteilen zum Selbstbestücken. Es blieben dann nur noch das Löten und das Flashen des ESP32 übrig.
-
----
+*Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)  
+**In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
 
-## Nachbau
+## Cool! How do I get one?
 
-- Vollständiger [`Schaltplan`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
-- PCB-Layout und Gerber-Dateien liegen in [`hardware/`](hardware/)  
-- Vollständige Stückliste: [`hardware/BarSync_BOM.md`](hardware/BarSync_BOM.md)  
-- Aufbauanleitung: [`hardware/BarSync_Aufbauanleitung.md`](hardware/BarSync_Aufbauanleitung.md)  
-- 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)  
+If you'd like to build the device yourself, see [LICENSE](LICENSE) — you'll find the corresponding firmware, schematic, and parts list here. I've also designed a PCB, whose layout is included as well. Since it's a fairly simple layout, you can also use perfboard or even a breadboard to build BarSync. Basic knowledge of the ESP32, a soldering iron, and general electronics will be helpful.
 
-
-## Wesentliche Hardware
-
-- ESP32 Dev Board (30-Pin DOIT-Layout)
-- SSD1309 OLED, 2,42", 128×64, SPI
-- 3 Taster (Custom, Grid, Reset)
-
-
-## Firmware flashen
-
-1. Arduino IDE installieren, ESP32-Boardunterstützung hinzufügen
-2. Bibliotheken installieren: **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
-3. [`firmware/barsync.ino`](firmware/barsync.ino) öffnen, Board "ESP32 Dev Module" wählen, hochladen
-
-
-## Lizenz
-
-Dieses Projekt steht unter **CC BY-NC-SA 4.0** — siehe [LICENSE](LICENSE).
-Freie Nutzung, Veränderung und Weitergabe für **nicht-kommerzielle** Zwecke,
-unter Namensnennung und Weitergabe unter gleichen Bedingungen. Für eine
-kommerzielle Nutzung bitte Kontakt aufnehmen.
+In short: the project is currently still in a full DIY stage. Depending on interest, I'm considering offering a BarSync kit. It would come with a 3D-printed enclosure, a PCB, and all the necessary electronic components ready to be assembled. All that would be left to do is soldering and flashing the ESP32.
 
 ---
 
 
-*[English version](README.en.md)*
+## Building Your Own
 
-*Entwickelt mit viel Debugging, MIDI-Timing-Tiefenanalyse und
-gelegentlichem Zwischenstopp bei einem Space-Invaders-Klon.*
+- Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
+- PCB layout, and Gerber files are in [`hardware/`](hardware/)  
+- Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)  
+- Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)  
+- 3D-printable enclosure available here: [`enclosure`](enclosure/)  
+
+
+## Key Hardware
+
+- ESP32 dev board (30-pin DOIT layout)
+- SSD1309 OLED, 2.42", 128×64, SPI
+- 3 buttons (custom, grid, reset)
+
+
+## Flashing the Firmware
+
+1. Install the Arduino IDE, add ESP32 board support
+2. Install libraries: **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
+3. Open [`firmware/barsync.ino`](firmware/barsync.ino), select board "ESP32 Dev Module", upload
+
+
+## License
+
+This project is licensed under **CC BY-NC-SA 4.0** — see [LICENSE](LICENSE).
+Free to use, modify, and share for **non-commercial** purposes, with
+attribution and share-alike terms. For commercial use, please get in touch.
+
+---
+
+
+*[Deutsche Version](README.de.md)*
+
+*Built with a lot of debugging, deep MIDI timing analysis, and an
+occasional detour into building a Space Invaders clone.*
