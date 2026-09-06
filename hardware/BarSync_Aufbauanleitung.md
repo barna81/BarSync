@@ -1,6 +1,6 @@
 # Aufbauanleitung — BarSync
 
-*[English version](BarSync_Aufbauanleitung_en.md)*
+*[English version](BarSync_Aufbauanleitung.en.md)*
 
 Empfohlene Reihenfolge für den Zusammenbau, vom Einfachsten zum Anspruchsvollsten.
 Bauteilliste und Referenzen entsprechen der verifizierten `BarSync_BOM.md`.
