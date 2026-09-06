@@ -1,9 +1,15 @@
-# BarSync
+<picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="180"></picture>
+
+<p align="right">
+**MIDI Clock Bar Counter & Visualizer**<br/>
+*-Always in Time.-*
+</p>
+<br/>
+<br clear="left"/>
 
 *[Deutsche Version](README.de.md)*
-
-**MIDI Clock Bar Counter & Visualizer**    -*Always in Time.*-
-
+<br/>
+<br/>
 BarSync is an ESP32-based device that receives an incoming MIDI clock and
 displays bar position, beat progress, tempo, and elapsed play time on a
 128×64 OLED display.
@@ -74,6 +80,8 @@ Quick overview — full guide in
 *Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)  
 **In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
+---
+
 
 ## Cool! How do I get one?
 
@@ -81,17 +89,24 @@ If you'd like to build the device yourself, see [LICENSE](LICENSE) — you'll fi
 
 In short: the project is currently still in a full DIY stage. Depending on interest, I'm considering offering a BarSync kit. It would come with a 3D-printed enclosure, a PCB, and all the necessary electronic components ready to be assembled. All that would be left to do is soldering and flashing the ESP32.
 
----
-
-
 ## Building Your Own
 
 - Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
 - PCB layout, and Gerber files are in [`hardware/`](hardware/)  
 - Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)  
 - Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)  
-- 3D-printable enclosure available here: [`enclosure`](enclosure/)  
+- 3D-printable enclosure available here: [`enclosure`](enclosure/)
 
+<p align="center">
+<img src="images/BarSync_CAD-b.png" alt="BarSync_CAD" width="1000">
+</p>
+
+## What´s inside?
+First build with the new PCB!  
+
+<p align="center">
+<img src="images/BarSync_inside.jpeg" alt="BarSync_inside" width="1000">
+</p>
 
 ## Key Hardware
 

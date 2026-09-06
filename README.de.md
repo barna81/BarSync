@@ -1,9 +1,15 @@
-# BarSync
+<picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="180"></picture>
+
+<p align="right">
+**MIDI Clock Bar Counter & Visualizer**<br/>
+*-Always in Time.-*
+</p>
+<br/>
+<br clear="left"/>
 
 *[English version](README.md)*
-
-**MIDI Clock Bar Counter & Visualizer**    -*Always in Time.*-
-
+<br/>
+<br/>
 BarSync ist ein ESP32-basiertes Gerät, das eine eingehende MIDI-Clock empfängt
 und Bar-Position, Beat-Fortschritt, Tempo und verstrichene Spielzeit auf
 einem 128×64-OLED-Display anzeigt.
@@ -74,15 +80,14 @@ Kurz zusammengefasst — vollständige Anleitung in
 *Im Setup einstellbar: Custom-Taster zum Durchschalten der Taktarten oder SET1.1 (default)  
 **Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
 
+---
+
 
 ## Cool! Wie komme ich da ran?
 
 Wenn Du das Gerät nachbauen möchtest siehe [LICENSE](LICENSE), findest Du hier die entsprechende Firmware, den Schaltplan und die Teileliste. Ich habe auch eine Platine entwickelt, deren Layout ebenfalls hier zu finden ist. Da es sich aber um ein recht einfaches Layout handelt, kannst Du auch eine Lochrasterplatine oder sogar ein Breadboard benutzen, um den BarSync nachzubauen. Darüber hinaus ist Basiswissen im Umgang mit dem ESP32, dem Lötkolben sowie der Elektronik von Vorteil.
 
 Kurz zusammengefasst: Aktuell befindet sich das Projekt noch im kompletten DIY-Stadium. Bei entsprechender Resonanz gedenke ich, einen Bausatz für den Barsync anzubieten. Dieser käme dann mit einem 3D-gedruckten Gehäuse, einer Platine und allen benötigten elektronischen Bauteilen zum Selbstbestücken. Es blieben dann nur noch das Löten und das Flashen des ESP32 übrig.
-
----
-
 
 ## Nachbau
 
@@ -91,6 +96,17 @@ Kurz zusammengefasst: Aktuell befindet sich das Projekt noch im kompletten DIY-S
 - Vollständige Stückliste: [`hardware/BarSync_BOM.md`](hardware/BarSync_BOM.md)  
 - Aufbauanleitung: [`hardware/BarSync_Aufbauanleitung.md`](hardware/BarSync_Aufbauanleitung.md)  
 - 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)  
+
+<p align="center">
+<img src="images/BarSync_CAD-b.png" alt="BarSync_CAD" width="1000">
+</p>
+
+## Was ist drinn?
+Erster Aufbau mit der neuen Paltine!  
+
+<p align="center">
+<img src="images/BarSync_inside.jpeg" alt="BarSync_inside" width="1000">
+</p>
 
 
 ## Wesentliche Hardware
