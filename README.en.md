@@ -87,11 +87,11 @@ In short: the project is currently still in a full DIY stage. Depending on inter
 
 ## Building Your Own
 
-Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf), PCB layout, and Gerber files are in
-[`hardware/`](hardware/).
-Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)
-Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)
-3D-printable enclosure available here: [`enclosure`](enclosure/)
+- Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
+- PCB layout, and Gerber files are in [`hardware/`](hardware/)  
+- Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)  
+- Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)  
+- 3D-printable enclosure available here: [`enclosure`](enclosure/)  
 
 
 ## Key Hardware
