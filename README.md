@@ -5,7 +5,7 @@ Bar Counter & Visualizer<br/>
 -Always in Time.-
 </p>
 <br clear="left"/>
-<br/>
+
 
 *[Deutsche Version](README.de.md)*
 
