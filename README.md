@@ -14,8 +14,8 @@ einem 128×64-OLED-Display anzeigt.
 ## Status (Stand 06.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.2.2
-    Neue Funktionen: MIDI-Analyzer durch MIDI Monitor ersetzt (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph direkt am Gerät), Grid-Trennlinien alle 32 Bars (abschaltbar), Resttakte-Anzeige bei x128, BarSync-Logo im Bootscreen
+- Aktueller FW Stand 1.2.2  
+    Neue Funktionen: MIDI-Analyzer durch MIDI Monitor ersetzt (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph direkt am Gerät), Grid-Trennlinien alle 32 Bars (abschaltbar), Resttakte-Anzeige bei x128, BarSync-Logo im Bootscreen  
     Sonstiges: Menüpunkt "Divisor"/"Divisor Select" final auf "Grid"/"Grid Select" umbenannt, neue Kontraststufen und Standardwerte
 - Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
 - Platinen zum selbst Bestücken sind angekommen

@@ -14,8 +14,8 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ## Status (as of 2026-09-06)
 
 BarSync - Desktop version (this device)
-- Current firmware: 1.2.2
-    New features: MIDI Analyzer replaced with MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph right on the device), 32-bar grid group separators (toggleable), remaining-bars indicator at x128, BarSync logo on the boot screen
+- Current firmware: 1.2.2  
+    New features: MIDI Analyzer replaced with MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph right on the device), 32-bar grid group separators (toggleable), remaining-bars indicator at x128, BarSync logo on the boot screen  
     Other: "Divisor"/"Divisor Select" menu item finally renamed to "Grid"/"Grid Select", new contrast steps and defaults
 - Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
 - PCBs for self-assembly have arrived
