@@ -11,7 +11,7 @@ einem 128×64-OLED-Display anzeigt.
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 04.09.2026)
+## Status (Stand 05.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
 - Aktueller FW Stand 1.2.1     
