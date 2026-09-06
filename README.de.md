@@ -1,8 +1,7 @@
-<picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="25%"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="30%"></picture>
 <p align="right">
-MIDI Clock<br/>
-Bar Counter & Visualizer<br/>
--Always in Time.-
+<b>MIDI Clock Bar Counter</b><br/>
+<sub><i>-Always in Time.-</i></sub>
 </p>
 <br clear="left"/>
 
