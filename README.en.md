@@ -71,7 +71,7 @@ Quick overview — full guide in
 | Custom button + Grid together | Toggle nudge mode |
 | Hold Reset 1s at boot | Settings menu |
 
-*Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)
+*Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)  
 **In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
 
