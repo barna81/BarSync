@@ -71,7 +71,7 @@ Kurz zusammengefasst — vollständige Anleitung in
 | Custom-Taster + Grid gleichzeitig | Nudge-Modus ein/aus |
 | Reset beim Booten 1s halten | Einstellungsmenü |
 
-*Der Custom-Taster ist frei belegbar — die hier gezeigten Funktionen entsprechen der aktuellen Firmware-Voreinstellung.
+*Im Setup einstellbar: Custom-Taster zum Durchschalten der Taktarten oder SET1.1 (default) 
 **Im MIDI-Monitor-Screen löscht der Reset-Taster die Note/CC-Liste, statt die normale Reset-Funktion auszulösen.
 
 
