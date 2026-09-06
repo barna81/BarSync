@@ -1,15 +1,15 @@
 <picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="25%"></picture>
 <p align="right">
-**MIDI Clock Bar Counter & Visualizer**<br/>
-*-Always in Time.-*
+MIDI Clock<br/>
+Bar Counter & Visualizer<br/>
+-Always in Time.-
 </p>
-
 <br clear="left"/>
 <br/>
 
 *[Deutsche Version](README.de.md)*
-<br/>
-<br/>
+
+
 BarSync is an ESP32-based device that receives an incoming MIDI clock and
 displays bar position, beat progress, tempo, and elapsed play time on a
 128×64 OLED display.
