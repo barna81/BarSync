@@ -2,6 +2,37 @@
 
 *[English version](CHANGELOG.en.md)*
 
+## Firmware v1.3.0 (11.09.2026)
+
+**Neu: Marker-Editor.** Im Bar-Grid lassen sich jetzt eigene Marker setzen
+(vier Symbole zur Auswahl) — praktisch für alles, was einen festen Bezug
+zum Takt braucht:
+- Arrangement-Wechsel markieren (Break, Drop, Aufbau), damit du immer
+  weißt, was als Nächstes kommt.
+- Phrasenanfänge kennzeichnen, damit die Band live am Arrangement bleibt,
+  ohne es auswendig zu kennen.
+- Cue-Punkte für geplante Licht-/FX-Wechsel, exakt auf den Takt
+  synchronisiert.
+
+Erreichbar über `OPERATION SETUP > SET MARKERS`.
+
+**Neu: zwei Darstellungsmodi fürs Grid.** `CYCLE` lässt das Grid
+wiederholt durch dasselbe Taktfenster laufen (x1 bis x128) — du siehst,
+wo du im aktuellen Zyklus stehst. `SCROLL` läuft stattdessen fortlaufend
+weiter und zeigt immer den aktuellen Takt plus die nächsten, inklusive
+bereits gesetzter Marker, die von rechts hereinlaufen. Umschaltbar über
+`OPERATION SETUP > GRID MODE`.
+
+**Neu: End Bar.** Legt fest, dass die Zählung bei einem bestimmten Takt
+schleift, stoppt oder einfach weiterläuft — entweder auf eine feste
+Taktnummer oder automatisch auf deinen letzten gesetzten Marker.
+Einstellbar über `OPERATION SETUP > END BAR` / `END BAR ACT`.
+
+Betrifft: `firmware/barsync.ino`. Keine Hardware-Änderungen in dieser
+Version.
+
+---
+
 ## Firmware v1.2.2 (06.09.2026)
 
 **MIDI-Analyzer durch MIDI Monitor ersetzt.** Die bisherige Jitter-Analyse

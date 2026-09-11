@@ -2,6 +2,35 @@
 
 *[Deutsche Version](CHANGELOG.md)*
 
+## Firmware v1.3.0 (2026-09-11)
+
+**New: Marker Editor.** You can now place your own markers directly on
+the bar grid (four symbols to choose from) — handy for anything that
+needs a fixed reference to the bar count:
+- Mark arrangement changes (break, drop, build), so you always know
+  what's coming next.
+- Flag the start of each phrase, so the band can follow the arrangement
+  live without memorizing it.
+- Cue points for planned lighting/FX changes, synced exactly to the bar.
+
+Reached via `OPERATION SETUP > SET MARKERS`.
+
+**New: two grid display modes.** `CYCLE` loops the grid repeatedly
+through the same window of bars (x1 to x128) — you see where you stand
+within the current cycle. `SCROLL` instead runs continuously forward,
+always showing the current bar plus what's coming up next, including
+any markers you've placed scrolling in from the right. Switchable via
+`OPERATION SETUP > GRID MODE`.
+
+**New: End Bar.** Defines a bar at which the count should loop back,
+stop, or simply carry on - either at a fixed bar number, or
+automatically at your last placed marker. Configurable via
+`OPERATION SETUP > END BAR` / `END BAR ACT`.
+
+Affects: `firmware/barsync.ino`. No hardware changes in this version.
+
+---
+
 ## Firmware v1.2.2 (2026-09-06)
 
 **MIDI Analyzer replaced with MIDI Monitor.** The previous jitter

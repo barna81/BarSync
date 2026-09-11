@@ -16,12 +16,11 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (as of 2026-09-06)
+## Status (as of 2026-09-11)
 
 BarSync - Desktop version (this device)
-- Current firmware: 1.2.2  
-    New features: MIDI Analyzer replaced with MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph right on the device), 32-bar grid group separators (toggleable), remaining-bars indicator at x128, BarSync logo on the boot screen  
-    Other: "Divisor"/"Divisor Select" menu item finally renamed to "Grid"/"Grid Select", new contrast steps and defaults
+- Current firmware: 1.3.0  
+    New features: Marker Editor (place your own markers on the bar grid), two grid display modes (CYCLE/SCROLL), End Bar (loop/stop/continue the count at a defined bar)
 - Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
 - PCBs for self-assembly have arrived
 - A matching 3D-printable enclosure is available here [`enclosure`](enclosure/)
@@ -53,6 +52,12 @@ BarSync supports you during your live performance. During a show your hands are 
 - Bar/beat counter, synced to the incoming MIDI clock (24 PPQN)
 - Grid progress bar (x1 to x128 bars) — overall area stays constant,
   tile size adapts accordingly
+- Two grid display modes: CYCLE (repeating cycle) or SCROLL
+  (continuous, with markers scrolling into view)
+- Marker Editor: place your own markers on the bar grid (4 symbols) —
+  for arrangement points, phrase starts, or band cues
+- End Bar: automatically loop, stop, or continue the count at a
+  defined bar — fixed, or at your last placed marker
 - 5 selectable time signatures (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset button: two stages (short = bar end, medium/hold = cycle end) — each independently configurable whether it also resets the elapsed play time (default: yes). Plus a standalone "SET 1.1" function (default custom-button role) to instantly re-anchor the beat pattern, either quantized (rounded to the nearest beat) or instant (raw tick) — selectable in the settings menu
 - MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph) right on the device

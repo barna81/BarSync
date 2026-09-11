@@ -1,13 +1,23 @@
 /*
  * ============================================================================
  *  BARSYNC — MIDI Clock Bar Counter & Visualizer — ESP32 + SSD1309 OLED (SPI, 128x64)
- *  Version: 1.2.2
+ *  Version: 1.3.0
  * ============================================================================
  *
  * Counts incoming MIDI clock (24 PPQN), derives beat/bar from it, and shows
  * bar number, BPM, elapsed time, beat progress, and a multi-row divisor
  * progress grid (x1 to x64 bars) on a monochrome 128x64 OLED, in a
  * reduced "Elektron" style.
+ *
+ * Pattern Mode markers (up to 500, each pinned to a bar, one of 4
+ * symbols) can be placed via OPERATION SETUP > SET MARKERS - see the
+ * PATTERN MODE sections below. Two grid modes decide how the grid
+ * shows them during normal playback (see gridMode, switched via
+ * OPERATION SETUP > GRID MODE): CYCLING is the plain repeating divisor
+ * grid; SCROLLING instead keeps the current bar fixed in the first
+ * cell and scrolls markers in from the right as they approach, see
+ * renderScrollingGrid(). Reset+Custom (held together) opens OPERATION
+ * SETUP.
  *
  * REQUIRED LIBRARIES (Library Manager):
  *   - "MIDI Library" by Francois Best (FortySevenEffects)
@@ -18,7 +28,7 @@
  * ============================================================================
  */
 
-#define FW_VERSION "1.2.2"
+#define FW_VERSION "1.3.0"
 
 
 #include <MIDI.h>
@@ -29,6 +39,7 @@
 #include "esp_sleep.h"
 #include "driver/uart.h"
 #include "driver/gpio.h"
+#include <string.h> // memset() - used by factoryResetSettings()/factoryResetPatternMarkers()
 
 // ---------------------------------------------------------------------------
 // PIN DEFINITIONS
@@ -183,6 +194,33 @@ uint8_t nextEnabledDivisor(uint8_t current) {
   return current;
 }
 
+// Same as nextEnabledDivisor() above, but only considers values within
+// [minValue, maxValue] - used while SCROLLING grid mode is active,
+// which only ever shows meaningfully at 2/4/8/16 (see
+// onDivisorButton()) - 1 is excluded since a 1-bar window can't show
+// any "scrolling ahead" at all, and above 16 the marker symbols
+// wouldn't fit legibly (see SCROLLING_MAX_WINDOW_BARS).
+uint8_t nextEnabledDivisorInRange(uint8_t current, uint8_t minValue, uint8_t maxValue) {
+  uint8_t idx = current;
+  for (uint8_t i = 0; i < DIVISOR_COUNT; i++) {
+    idx = (idx + 1) % DIVISOR_COUNT;
+    if (isDivisorEnabled(idx) && DIVISOR_VALUES[idx] >= minValue && DIVISOR_VALUES[idx] <= maxValue) return idx;
+  }
+  return current;
+}
+
+// Highest enabled divisor at or below 16 (DIVISOR_VALUES indices for
+// 16,8,4,2, in that preference order) - used to initialize a sensible
+// window size the moment SCROLLING mode is switched on (see
+// onSetupMenuChange()'s GRID MODE row), same reasoning as
+// nextEnabledDivisorInRange() above for why 1 is never a candidate.
+uint8_t highestEnabledDivisorUpTo16() {
+  for (int8_t i = 4; i >= 1; i--) { // DIVISOR_VALUES indices 4,3,2,1 = 16,8,4,2
+    if (isDivisorEnabled(i)) return i;
+  }
+  return divisorIndex; // none of 2/4/8/16 enabled - leave unchanged, defensive
+}
+
 bool isTimeSigEnabled(uint8_t i) { return (settings.enabledTimeSigMask >> i) & 0x01; }
 
 uint8_t countEnabledTimeSig() {
@@ -281,9 +319,340 @@ void factoryResetSettings() {
   settings.gridSeparatorsEnabled = true;
   timeSigIndex = settings.timeSigIndex;
   divisorIndex = settings.divisorIndex;
+
+  factoryResetPatternMarkers(); // pattern marker globals are declared further down - see there
 }
 
+// ---------------------------------------------------------------------------
+// PATTERN MODE markers
+// ---------------------------------------------------------------------------
+// The ordinary, non-Song divisor grid - "the normal mode" - just with
+// up to 500 optional markers, each pinned to one bar (1..9999), one of
+// 4 simple, clearly distinguishable shapes (see SongSymbol/
+// drawSongSymbol() below - no room for a character editor on this
+// display with only 3 buttons and no encoder). Every marker is exactly
+// 1 bar long. In CYCLING mode they only ever actually show up at
+// x1/x2/x4/x8/x16, and only when their bar falls within the current
+// cycle window - those are the only grid layouts whose cells map 1:1
+// onto bar positions at all (never at x32/x64/x128, which group
+// several bars per cell) - see the marker lookup in render()'s normal
+// grid loop. SCROLLING mode (see renderScrollingGrid()) only ever
+// operates within that same 2-16 range in the first place (see
+// onDivisorButton()), so every marker there is always potentially
+// visible once playback scrolls close enough. A marker set far beyond
+// the current window is still stored and editable either way, it
+// simply won't be visible until playback reaches it.
+enum SongSymbol { SONG_SYM_SQUARE = 0, SONG_SYM_CIRCLE = 1, SONG_SYM_TRIANGLE = 2, SONG_SYM_X = 3 };
+const uint8_t SONG_SYMBOL_COUNT = 4;
+const char* SONG_SYMBOL_LABEL[SONG_SYMBOL_COUNT] = {"SQUARE", "CIRCLE", "TRIANGLE", "X"};
 
+// Selects how drawSongSymbol() renders a marker symbol - see there for
+// the full explanation of each.
+enum SongSymbolFill { SYMFILL_OUTLINE = 0, SYMFILL_SOLID = 1, SYMFILL_CUTOUT = 2 };
+
+// Manual prototype - Arduino's ctags-based auto-prototype generator
+// doesn't reliably handle a custom enum as a parameter type (same
+// issue this file has hit before with other menu enums - see
+// SetupMenuScreen further down), producing a broken forward
+// declaration that leaves SongSymbolFill undeclared at the point
+// drawSongSymbol() is actually defined. Declaring it explicitly here,
+// right after the enum itself, pre-empts that broken auto-generation.
+void drawSongSymbol(uint8_t symbol, int x, int y, int w, int h, SongSymbolFill fill);
+
+// The two ways the main grid displays during normal (non-editing)
+// playback - see render()'s grid section further down. CYCLING is the
+// original, always-there behavior: a plain repeating N-bar cycle,
+// bar 1 of the cycle through the last bar, over and over. SCROLLING
+// instead keeps the current bar fixed in the first cell and scrolls
+// the timeline of upcoming markers toward it (see
+// renderScrollingGrid()) - the same idea the old Song Mode used for its
+// section symbols, just driven by patternMarkers now that Song Mode
+// itself is gone.
+enum GridMode { GRIDMODE_CYCLING = 0, GRIDMODE_SCROLLING = 1 };
+const uint8_t GRIDMODE_COUNT = 2;
+const char* GRIDMODE_LABEL[GRIDMODE_COUNT] = {"CYCLE", "SCROLL"};
+uint8_t gridMode = GRIDMODE_CYCLING;
+
+// End Bar - set via Operation Setup, independent of gridMode (applies
+// the same way under CYCLE and SCROLL): once playback would move
+// past the resolved end bar (see resolveEndBar()), endBarAction
+// decides what happens - see the check in handleClock().
+//   OFF         - the whole feature is disabled, currentBar just
+//                 counts up forever like it always has
+//   MANUAL      - a fixed bar number (endBarManualValue), stepped in
+//                 groups of 4 (see stepEndBar()) since bars are
+//                 musically grouped that way far more often than not.
+//                 Only mode with an actual value to set - see the
+//                 BAR NUMBER row (ROW_END_BAR_NUMBER) in Operation
+//                 Setup, only shown while this mode is active.
+//   LAST_MARKER - automatically follows whichever Pattern Mode marker
+//                 currently sits furthest out (patternMarkers[] is
+//                 kept sorted ascending, so that's just the last
+//                 entry) - if there are no markers at all, this
+//                 resolves the same as OFF
+enum EndBarMode { ENDBAR_MODE_OFF = 0, ENDBAR_MODE_MANUAL = 1, ENDBAR_MODE_LAST_MARKER = 2 };
+const uint8_t ENDBAR_MODE_COUNT = 3;
+const char* ENDBAR_MODE_LABEL[ENDBAR_MODE_COUNT] = {"OFF", "MANUAL", "LAST MARKER"};
+uint8_t  endBarMode        = ENDBAR_MODE_OFF;
+uint32_t endBarManualValue = 4; // only meaningful while endBarMode == ENDBAR_MODE_MANUAL - always a multiple of 4
+
+enum EndBarAction { ENDBAR_LOOP = 0, ENDBAR_STOP = 1, ENDBAR_CONTINUE = 2 };
+const uint8_t ENDBAR_ACTION_COUNT = 3;
+const char* ENDBAR_ACTION_LABEL[ENDBAR_ACTION_COUNT] = {"LOOP", "STOP", "CONTINUE"};
+uint8_t endBarAction = ENDBAR_LOOP;
+#define END_BAR_MAX 9999
+#define END_BAR_STEP 4
+
+// Cell size limit for SCROLLING mode: past this, cells in the shared
+// 128x64 grid footprint get too small to tell the 4 marker symbols
+// apart - the Grid/Divisor button simply skips any larger value while
+// SCROLLING is active (see onDivisorButton()).
+#define SCROLLING_MAX_WINDOW_BARS 16
+
+#define PATTERN_MARKER_COUNT 500
+struct PatternMarker {
+  uint16_t bar; // 1..9999, the bar this marker sits on
+  uint8_t  symbol;
+};
+uint16_t      patternMarkerCount = 0; // how many of the slots below are actually used - uint8_t isn't wide enough once PATTERN_MARKER_COUNT > 255
+PatternMarker patternMarkers[PATTERN_MARKER_COUNT];
+
+// Resolves whatever endBarMode currently means into one actual 1-based
+// bar number to compare currentBar against - 0 means "no end bar right
+// now" (OFF, or LAST_MARKER with nothing placed yet). patternMarkers[]
+// is always kept sorted ascending by bar (see paintPatternMarkerAtCursor()),
+// which is what makes "the last entry" the correct lookup for
+// LAST_MARKER here.
+uint32_t resolveEndBar() {
+  switch (endBarMode) {
+    case ENDBAR_MODE_MANUAL:
+      return endBarManualValue;
+    case ENDBAR_MODE_LAST_MARKER:
+      return (patternMarkerCount > 0) ? patternMarkers[patternMarkerCount - 1].bar : 0;
+    case ENDBAR_MODE_OFF:
+    default:
+      return 0;
+  }
+}
+
+// Called from factoryResetSettings() above, which is defined earlier
+// in this file than patternMarkers itself - Arduino auto-prototypes
+// functions, but not plain global variables, so factoryResetSettings()
+// calls this instead of touching patternMarkers directly.
+void factoryResetPatternMarkers() {
+  memset(patternMarkers, 0, sizeof(patternMarkers));
+  patternMarkerCount = 0;
+  gridMode = GRIDMODE_CYCLING;
+  endBarMode        = ENDBAR_MODE_OFF;
+  endBarManualValue = END_BAR_STEP;
+  endBarAction      = ENDBAR_LOOP;
+}
+
+void loadPatternMarkers() {
+  prefs.begin("midiclock", true);
+  gridMode = prefs.getUChar("gridmode", GRIDMODE_CYCLING);
+  endBarMode        = prefs.getUChar("endbarmode", ENDBAR_MODE_OFF);
+  endBarManualValue = prefs.getUInt("endbarval", END_BAR_STEP);
+  endBarAction      = prefs.getUChar("endbaract", ENDBAR_LOOP);
+  patternMarkerCount = prefs.getUShort("patcount", 0);
+  size_t got = prefs.getBytes("patmarkers", &patternMarkers, sizeof(patternMarkers));
+  prefs.end();
+  if (gridMode >= GRIDMODE_COUNT) gridMode = GRIDMODE_CYCLING; // safety net
+  if (endBarMode >= ENDBAR_MODE_COUNT) endBarMode = ENDBAR_MODE_OFF; // safety net
+  if (endBarManualValue == 0 || endBarManualValue > END_BAR_MAX) endBarManualValue = END_BAR_STEP; // safety net
+  if (endBarAction >= ENDBAR_ACTION_COUNT) endBarAction = ENDBAR_LOOP; // safety net
+  if (got != sizeof(patternMarkers)) { memset(patternMarkers, 0, sizeof(patternMarkers)); patternMarkerCount = 0; } // never saved before
+  if (patternMarkerCount > PATTERN_MARKER_COUNT) patternMarkerCount = 0; // safety net
+}
+
+void savePatternMarkers() {
+  prefs.begin("midiclock", false);
+  prefs.putUChar("gridmode", gridMode);
+  prefs.putUChar("endbarmode", endBarMode);
+  prefs.putUInt("endbarval", endBarManualValue);
+  prefs.putUChar("endbaract", endBarAction);
+  prefs.putUShort("patcount", patternMarkerCount);
+  prefs.putBytes("patmarkers", &patternMarkers, sizeof(patternMarkers));
+  prefs.end();
+}
+
+// Looks up whether a marker sits on the ABSOLUTE bar that grid cell
+// "gridIndex" (0-based, 0..15) currently represents. windowStartBar is
+// the absolute (0-based) bar the x16 window currently begins at - so a
+// marker only ever lights up on the one actual pass through its bar
+// number, not on every repeat of the 16-bar cycle (which is what a
+// plain relative-position match would give, and why a 9999-bar range
+// wouldn't otherwise make sense on a 16-cell repeating grid). Markers
+// store 1-based bar numbers, matching how bars are shown everywhere
+// else in the UI. isFirstOfTypeOut is set to true when this marker is
+// the first of a new run of its symbol - either the very first marker
+// overall, or its symbol differs from the nearest earlier marker's
+// (patternMarkers[] is kept sorted ascending by bar, so that's simply
+// the previous array entry) - callers use this to highlight the start
+// of each new symbol run (see SYMFILL_SOLID in render()).
+bool findPatternMarkerSymbolAt(uint32_t windowStartBar, uint8_t gridIndex, uint8_t &symbolOut, bool &isFirstOfTypeOut) {
+  uint32_t absoluteBar1Based = windowStartBar + gridIndex + 1;
+  for (uint16_t i = 0; i < patternMarkerCount; i++) {
+    if (patternMarkers[i].bar == absoluteBar1Based) {
+      symbolOut = patternMarkers[i].symbol;
+      isFirstOfTypeOut = (i == 0) || (patternMarkers[i].symbol != patternMarkers[i - 1].symbol);
+      return true;
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// PATTERN MODE marker paint editor - a main-screen overlay, not a menu
+// ---------------------------------------------------------------------------
+// Entered from OPERATION SETUP's SET MARKERS item (Pattern Mode only -
+// see onSetupMenuChange()/runOperationSetupMenu()). While active, Custom and
+// Divisor no longer do their normal jobs - they move a cursor bar by
+// bar (Custom = back, Divisor = forward, up to bar 9999) through the
+// grid, paging to the next/previous 16-bar window automatically at the
+// edges; held past 1s they instead page a full 16-bar window every
+// PATTERN_EDIT_FAST_SCROLL_MS (see onCustomHeldDuringPress()/
+// onDivisorHeldDuringPress()).
+// Moving alone never paints - it's pure navigation. Holding Reset at
+// the same time is what paints: every bar the cursor lands on while
+// Reset is down - one step at a time, or while fast-scrolling - gets
+// painted with whatever tool is currently selected (see
+// paintPatternMarkerAtCursor()), so you sweep across several bars by
+// holding Reset and moving. Reset on its own (a plain tap, not held
+// into a move) just paints/uses the tool on the bar the cursor is
+// already on.
+//
+// Tool selection itself is a separate gesture: Custom+Divisor pressed
+// together (see the tool-cycle chord in loop()) cycles which tool is
+// selected - the 4 symbols, then DEL - firing the instant the chord is
+// recognized, no hold needed (selecting a tool is low-stakes, unlike
+// the LEAVE combo below). DEL is a plain stop in that rotation like
+// any other - it doesn't jump anywhere special, cycling straight
+// through in order. Landing DEL as the current tool erases via the
+// same paint-while-holding-Reset mechanic as any other tool, just
+// removing a marker instead of placing one.
+//
+// The selected tool is a completely separate piece of state from
+// patternEditCursorBar, untouched by paging between 16-bar windows -
+// it stays selected however far you navigate; running out of room to
+// paint further out is always the 500-marker cap, not the tool having
+// reset.
+//
+// Exiting the paint editor (and persisting the markers) is the same
+// Custom+Reset combo that opened OPERATION SETUP in the first place -
+// see the "Operation Setup entry / Pattern Edit exit" combo in loop(), and
+// it's also reachable from every screen inside Operation Setup itself
+// (see the LEAVE chord in runOperationSetupMenu()), not just from TOP.
+// Unlike the tool-cycle chord above, this one requires a full 1s hold
+// (with a "LEAVE" sweep, see drawHoldSweep()) once the chord is
+// detected, precisely so it can't be triggered by the tool-cycle chord
+// itself or by holding Reset while tapping Custom/Divisor to paint -
+// both of those are quick, unsustained interactions, while genuinely
+// wanting to leave means holding still for a full second. Exiting from
+// the paint editor lands back in OPERATION SETUP itself, not straight
+// back to the live grid - from there, the normal Reset-held-at-TOP-
+// level exit (or the same combo again) takes you the rest of the way
+// out.
+//
+// See onCustomButton()/onDivisorButton()/onResetButton() for where
+// these intercept the normal button roles, and render()'s normal-grid
+// section for how the display itself changes while this is active.
+bool     patternEditActive    = false;
+
+// Custom+Reset chord hold-to-confirm (see the "Operation Setup entry /
+// Pattern Edit exit" combo in loop()) - once the chord is detected,
+// both buttons must stay down for a further 1s, with a "LEAVE"/"MENU"
+// sweep shown via drawHoldSweep() in render(), before the actual
+// enter/exit happens.
+bool     leaveComboHoldActive   = false;
+uint32_t leaveComboHoldStartMs  = 0;
+
+// Same hold-to-confirm treatment for the Nudge mode combo (Custom+
+// Divisor) - see loop()'s "Nudge mode" block. Separate state from the
+// pair above since it's a different button combo/gesture, though it
+// shares the same drawHoldSweep() visual.
+bool     nudgeComboHoldActive  = false;
+uint32_t nudgeComboHoldStartMs = 0;
+
+// Set by runOperationSetupMenu() each iteration to tell renderOperationSetupMenu()
+// whether to overlay the same hold-to-confirm sweep this frame -
+// nullptr means none. Keeps every Reset-hold-to-leave/back moment in
+// Operation Setup visually consistent with the combo above, without
+// needing to thread the hold state through as a render() parameter.
+const char* menuHoldSweepLabel   = nullptr;
+uint32_t    menuHoldSweepHeldMs  = 0;
+uint32_t patternEditCursorBar = 1; // 1-based absolute bar
+uint8_t  patternEditTool      = 0; // 0..3 = SongSymbol directly, 4 = DEL - see paintPatternMarkerAtCursor()
+
+// Fast-scroll state: holding Custom/Divisor for 1s starts paging by a
+// full 16-bar window every PATTERN_EDIT_FAST_SCROLL_MS instead of
+// moving one bar at a time - see onCustomHeldDuringPress()/
+// onDivisorHeldDuringPress() (checked every loop() iteration while
+// held) and the matching release handlers below, which skip their
+// own single-step move once a hold has already paged things.
+#define PATTERN_EDIT_FAST_SCROLL_MS 325 // 250ms slowed by 30%
+
+// Every blink on the Pattern Mode editor screen (the tool indicator,
+// the grid cursor, the cycle-end number) shares this one fixed
+// period - deliberately not tied to BPM/the live tempo, just a flat,
+// pleasant rate.
+#define PATTERN_EDIT_BLINK_MS 300
+// Step interval for the fast-scroll "running arrow" animation (see
+// buildChaseFrame()) - deliberately faster than PATTERN_EDIT_BLINK_MS,
+// since it's meant to read as motion, not a slow toggle.
+#define PATTERN_EDIT_CHASE_MS 120
+bool     patternEditDivisorFastScrolling = false;
+bool     patternEditCustomFastScrolling  = false;
+uint32_t patternEditDivisorLastPageMs    = 0;
+uint32_t patternEditCustomLastPageMs     = 0;
+
+// Paints (or erases) the marker at the cursor's current bar with
+// whatever tool is selected. A symbol tool updates an existing marker
+// there, or inserts a new one in sorted bar order if there's room
+// (PATTERN_MARKER_COUNT total, same cap as everywhere else in Pattern
+// Mode) - if it's full and there's no marker on this bar yet, this
+// simply does nothing rather than bumping another marker out. The DEL
+// tool removes whatever marker (if any) sits on this bar.
+void paintPatternMarkerAtCursor() {
+  if (patternEditTool == 4) { // DEL
+    erasePatternMarkerAtCursor();
+    return;
+  }
+
+  int16_t existing = -1;
+  for (uint16_t i = 0; i < patternMarkerCount; i++) {
+    if (patternMarkers[i].bar == patternEditCursorBar) { existing = i; break; }
+  }
+
+  uint8_t symbol = patternEditTool; // 0..3 map directly to SongSymbol now
+  if (existing >= 0) {
+    patternMarkers[existing].symbol = symbol;
+    return;
+  }
+  if (patternMarkerCount >= PATTERN_MARKER_COUNT) return; // full - can't add a new one here
+
+  uint16_t insertAt = patternMarkerCount;
+  for (uint16_t i = 0; i < patternMarkerCount; i++) {
+    if (patternMarkers[i].bar > patternEditCursorBar) { insertAt = i; break; }
+  }
+  for (uint16_t i = patternMarkerCount; i > insertAt; i--) patternMarkers[i] = patternMarkers[i - 1];
+  patternMarkers[insertAt].bar    = patternEditCursorBar;
+  patternMarkers[insertAt].symbol = symbol;
+  patternMarkerCount++;
+}
+
+// Removes whatever marker (if any) sits on the cursor's current bar -
+// called from paintPatternMarkerAtCursor() when DEL is the selected
+// tool.
+void erasePatternMarkerAtCursor() {
+  for (uint16_t i = 0; i < patternMarkerCount; i++) {
+    if (patternMarkers[i].bar == patternEditCursorBar) {
+      for (uint16_t j = i; j + 1 < patternMarkerCount; j++) patternMarkers[j] = patternMarkers[j + 1];
+      patternMarkerCount--;
+      return;
+    }
+  }
+}
 
 // Reset request. 0 = no reset registered. 1 = Reset 1 - stays pending
 // until the end of the current bar (see handleClock()). 2 = Reset 2 -
@@ -449,10 +818,43 @@ void updateButton(Button &b, ButtonCallback onRelease) {
 // ---------------------------------------------------------------------------
 // button-CALLBACKS
 // ---------------------------------------------------------------------------
+
+// True if two press-start timestamps are within 400ms of each other -
+// the shared "close enough to be one physical chord" test. Used by
+// loop()'s Reset+Custom Operation Setup combo to tell a genuine fresh
+// chord apart from Reset simply having already been held for a while
+// when Custom happens to join in (a normal, frequent interaction in
+// the Pattern Mode paint editor - see onCustomButton()/
+// onDivisorButton()). onResetButton() and onCustomButton() below reuse
+// the exact same test to recognize when their OWN release is part of
+// an aborted chord attempt (the combo's 1s hold never completed) and
+// swallow their normal short-press action instead of firing it -
+// without this, letting go of either button early still registered as
+// a plain Reset or Custom press (arming Reset 1, or worse, an instant
+// SET 1.1/TIMESIG change from the Custom side).
+bool isChordTiming(uint32_t pressStartMsA, uint32_t pressStartMsB) {
+  int32_t diff = (int32_t)(pressStartMsA - pressStartMsB);
+  if (diff < 0) diff = -diff;
+  return diff <= 400;
+}
+
 void onDivisorButton(bool longPress) {
+  if (patternEditActive) {
+    if (suppressDivisorAction) { suppressDivisorAction = false; return; } // consumed by the Custom+Divisor tool-cycle chord, see loop()
+    if (btnCustom.isPressed) return; // interlocked against Custom - only one of the two navigates at a time here (see the tool-cycle chord above for the one deliberate exception)
+    if (patternEditDivisorFastScrolling) {
+      patternEditDivisorFastScrolling = false; // already paged (and painted/erased) via the hold-repeat, see onDivisorHeldDuringPress()
+      return;
+    }
+    if (patternEditCursorBar < 9999) patternEditCursorBar++;
+    if (btnReset.isPressed) paintPatternMarkerAtCursor(); // holding Reset while moving paints/erases with the current tool
+    return;
+  }
   if (suppressDivisorAction) { suppressDivisorAction = false; return; } // was only a wake-up press
   if (currentMode != MODE_NORMAL) return; // no accidental change in nudge mode/analyzer (nudge runs via its own logic in loop())
-  divisorIndex = nextEnabledDivisor(divisorIndex);
+  divisorIndex = (gridMode == GRIDMODE_SCROLLING)
+    ? nextEnabledDivisorInRange(divisorIndex, 2, SCROLLING_MAX_WINDOW_BARS)
+    : nextEnabledDivisor(divisorIndex);
   saveQuickState(); // save the latest state immediately, kept after restart
 }
 
@@ -460,6 +862,22 @@ void onDivisorButton(bool longPress) {
 // role: SET 1.1). Dispatches to whichever function is currently
 // assigned; see triggerSet11() below for the SET 1.1 role.
 void onCustomButton(bool longPress) {
+  // Custom's release is checked against Reset's CURRENT state and
+  // press-start, not against btnCustom's own (which has already
+  // flipped to "released" by the time this callback runs) - see
+  // isChordTiming().
+  if (btnReset.stableState == LOW && isChordTiming(btnCustom.pressStartMs, btnReset.pressStartMs)) return;
+  if (patternEditActive) {
+    if (suppressCustomAction) { suppressCustomAction = false; return; } // consumed by the Custom+Divisor tool-cycle chord, see loop()
+    if (btnDivisor.isPressed) return; // interlocked against Divisor/Grid - only one of the two navigates at a time here (see the tool-cycle chord above for the one deliberate exception)
+    if (patternEditCustomFastScrolling) {
+      patternEditCustomFastScrolling = false; // already paged (and painted/erased) via the hold-repeat, see onCustomHeldDuringPress()
+      return;
+    }
+    if (patternEditCursorBar > 1) patternEditCursorBar--;
+    if (btnReset.isPressed) paintPatternMarkerAtCursor(); // holding Reset while moving paints/erases with the current tool
+    return;
+  }
   // If the long press already toggled the analyzer while held,
   // do nothing more here (prevents a double action / an accidental
   // further cycling of the time signature on release).
@@ -485,9 +903,55 @@ void onCustomButton(bool longPress) {
 // role above - available no matter what the custom button's short
 // press is currently assigned to.
 void onCustomButtonLongHeldDuringPress() {
+  if (patternEditActive) return; // Custom navigates the paint cursor here, never the analyzer
+  if (btnReset.isPressed) return; // Reset also down - this is the Operation Setup combo (see loop()), not a solo Custom hold
+  if (btnDivisor.isPressed) return; // Divisor also down - this is the Nudge combo (see loop()), not a solo Custom hold
   if (suppressCustomAction) return; // wake-up press does not trigger a long-press effect
   if (currentMode == MODE_NUDGE) return; // no analyzer toggle in nudge mode
   currentMode = (currentMode == MODE_NORMAL) ? MODE_ANALYZER : MODE_NORMAL;
+}
+
+// Fast-scroll while held, checked every loop() iteration (unlike
+// onCustomButtonLongHeldDuringPress()/onResetMediumHeldDuringPress()
+// above, which are one-shot triggers gated behind their own
+// "already handled" flags) - after 1s held, pages a full 16-bar
+// window every PATTERN_EDIT_FAST_SCROLL_MS instead of moving one bar
+// at a time. See
+// onCustomButton()/onDivisorButton() for where the matching release
+// skips its own single-step once this has already moved things.
+void onCustomHeldDuringPress() {
+  if (!btnCustom.isPressed) { patternEditCustomFastScrolling = false; return; } // the real bug: without this, a stale pressStartMs from any earlier press made heldMs look huge forever
+  if (!patternEditActive) return;
+  if (btnDivisor.isPressed) return; // interlocked against Divisor/Grid, see onCustomButton()
+  uint32_t heldMs = millis() - btnCustom.pressStartMs;
+  if (heldMs < 1000) return;
+  if (!patternEditCustomFastScrolling) {
+    patternEditCustomFastScrolling = true;
+    patternEditCustomLastPageMs    = millis();
+  }
+  if (millis() - patternEditCustomLastPageMs >= PATTERN_EDIT_FAST_SCROLL_MS) {
+    patternEditCustomLastPageMs = millis();
+    patternEditCursorBar = (patternEditCursorBar > 16) ? (patternEditCursorBar - 16) : 1;
+    if (btnReset.isPressed) paintPatternMarkerAtCursor(); // holding Reset while moving paints/erases with the current tool
+  }
+}
+
+void onDivisorHeldDuringPress() {
+  if (!btnDivisor.isPressed) { patternEditDivisorFastScrolling = false; return; } // same fix as onCustomHeldDuringPress() - see there
+  if (!patternEditActive) return;
+  if (btnCustom.isPressed) return; // interlocked against Custom, see onDivisorButton()
+  uint32_t heldMs = millis() - btnDivisor.pressStartMs;
+  if (heldMs < 1000) return;
+  if (!patternEditDivisorFastScrolling) {
+    patternEditDivisorFastScrolling = true;
+    patternEditDivisorLastPageMs    = millis();
+  }
+  if (millis() - patternEditDivisorLastPageMs >= PATTERN_EDIT_FAST_SCROLL_MS) {
+    patternEditDivisorLastPageMs = millis();
+    uint32_t next = patternEditCursorBar + 16;
+    patternEditCursorBar = (next > 9999) ? 9999 : next;
+    if (btnReset.isPressed) paintPatternMarkerAtCursor(); // holding Reset while moving paints/erases with the current tool
+  }
 }
 
 // Checks whether time, bar counter, or divisor cycle have any value
@@ -622,6 +1086,18 @@ volatile uint8_t midiMonHead  = 0; // next slot to overwrite
 volatile uint8_t midiMonCount = 0; // valid entries so far, caps at MIDI_MON_SLOTS
 
 void onResetButton(bool longPress) {
+  // Reset's release is checked against Custom's CURRENT state and
+  // press-start, not against btnReset's own (which has already
+  // flipped to "released" by the time this callback runs) - see
+  // isChordTiming().
+  if (btnCustom.stableState == LOW && isChordTiming(btnCustom.pressStartMs, btnReset.pressStartMs)) return;
+  if (patternEditActive) {
+    // Tool selection is now the Custom+Divisor chord (see loop()) -
+    // Reset just uses whatever's currently selected, on the bar the
+    // cursor is on right now.
+    paintPatternMarkerAtCursor();
+    return;
+  }
   if (currentMode == MODE_ANALYZER) {
     // MIDI Monitor screen: Reset clears the Note/CC event log instead
     // of performing any transport-reset function here (see also
@@ -691,6 +1167,7 @@ void onResetButton(bool longPress) {
 // ever execute later, in handleClock(), once the actual bar/cycle
 // boundary is reached.
 void onResetMediumHeldDuringPress() {
+  if (patternEditActive) return; // Reset rotates/paints tools here instead, see onResetButton() - never Reset 2
   if (currentMode == MODE_ANALYZER) return; // Reset clears the log on release instead, see onResetButton()
   if (suppressResetAction) return; // wake-up press does not trigger an effect
   if (!isRunning) return; // nothing to reset in STOP mode
@@ -916,6 +1393,29 @@ void handleClock() {
     }
   }
 
+  // --- End Bar: manually set via Operation Setup, 0 = OFF. Checked
+  // right after currentBar is finalized for this tick, same spot the
+  // Reset 1/2 quantized reset below hooks in - (currentBar + 1) is the
+  // 1-based bar just reached, so this fires the instant playback would
+  // move past the configured end bar. Applies to both grid modes
+  // (CYCLING and SCROLLING) equally - it's independent of how the grid
+  // happens to be drawn.
+  uint32_t effectiveEndBar = resolveEndBar();
+  if (effectiveEndBar > 0 && (currentBar + 1) > effectiveEndBar) {
+    switch (endBarAction) {
+      case ENDBAR_LOOP:
+        currentBar  = 0;
+        totalTicks  = 0; // so F (divisor bar) starts over, same as a quantized Reset
+        break;
+      case ENDBAR_STOP:
+        isRunning = false;
+        break;
+      case ENDBAR_CONTINUE:
+      default:
+        break; // no action - end bar is informational only in this mode
+    }
+  }
+
   // --- Quantized reset: Reset 1 (bar end) / Reset 2 (cycle end) ---
   // Neither stage re-anchors anything - they both just wait for the
   // next boundary of whichever grid is currently active (the original
@@ -951,6 +1451,7 @@ void handleClock() {
     commitSet11(totalTicks);
     set11PendingNextBeat = false;
   }
+
 }
 
 void handleStart() {
@@ -1075,6 +1576,135 @@ void formatTime(char *buf, uint32_t ms) {
   sprintf(buf, "%02u:%02u", mm, ss);
 }
 
+// Shared "hold to confirm" sweep - same Eurorack-style XOR-inverting
+// progress bar already used for RESET 1->2 in the header, generalized
+// with a label/duration/y-position so every "hold to leave/back"
+// moment in the firmware (the Custom+Reset combo, and Reset-held
+// inside Operation Setup) gives the same visual feedback. y is the
+// text baseline; the bar and background sit centered on it.
+//
+// Nothing is drawn for the first GRACE_MS of the hold - a brief,
+// incidental hold (or one that resolves before the actual action
+// fires) shouldn't flash this on screen; progress is scaled to the
+// remaining window after that, same idea as the existing RESET 1->2
+// sweep's own confirm delay. A solid background - deliberately bigger
+// than the tight text+bar footprint - is cleared first, so the label
+// reads cleanly instead of blending into whatever the screen was
+// already showing underneath.
+// Draws text that alternates between plain and inverted (a filled box
+// behind it in the opposite color) depending on blinkOn - used for
+// header/footer labels that need to blink attention to themselves
+// (SET MARKERS, tool indicators, etc.) without a full re-layout.
+void drawBlinkableText(int x, int y, const char* text, bool blinkOn) {
+  if (blinkOn) {
+    int w = u8g2.getStrWidth(text);
+    u8g2.setDrawColor(1);
+    u8g2.drawBox(x - 1, y - 7, w + 2, 9);
+    u8g2.setDrawColor(0);
+    u8g2.drawStr(x, y, text);
+    u8g2.setDrawColor(1);
+  } else {
+    u8g2.drawStr(x, y, text);
+  }
+}
+
+// Same idea as drawBlinkableText() above, but for one of the 4 marker
+// symbols (see drawSongSymbol()) instead of a text string. The symbol
+// is drawn 1px right of the highlight box's own inset area -
+// drawSongSymbol()'s narrow-cell 1px-left correction (meant for the
+// live grids' alternating 15/16px column widths, see there) doesn't
+// apply to this fixed 7x7 icon, so it needs undoing here to land
+// centered on the 9x9 background.
+void drawBlinkableSymbol(uint8_t symbol, int x, int y, bool blinkOn) {
+  if (blinkOn) {
+    u8g2.setDrawColor(1);
+    u8g2.drawBox(x - 1, y - 1, 9, 9);
+    u8g2.setDrawColor(0);
+    drawSongSymbol(symbol, x + 1, y, 7, 7, SYMFILL_OUTLINE);
+    u8g2.setDrawColor(1);
+  } else {
+    drawSongSymbol(symbol, x + 1, y, 7, 7, SYMFILL_OUTLINE);
+  }
+}
+
+void drawHoldSweep(const char* label, uint32_t heldMs, uint32_t totalMs, int y) {
+  const uint32_t GRACE_MS = 350;
+  if (heldMs < GRACE_MS) return;
+  float progress = (float)(heldMs - GRACE_MS) / (float)(totalMs - GRACE_MS);
+  if (progress > 1.0f) progress = 1.0f;
+
+  int w = u8g2.getStrWidth(label);
+  int barW = w + 10; // a bit wider than the text
+  int barX = (128 - barW) / 2;
+
+  const int bgPadX = 8;
+  int bgW = barW + bgPadX;
+  int bgX = (128 - bgW) / 2;
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(bgX, y - 9, bgW, 12);
+
+  u8g2.setDrawColor(1);
+  u8g2.drawStr((128 - w) / 2, y, label);
+
+  int fillW = (int)(barW * progress);
+  u8g2.setDrawColor(2); // XOR: inverts the text wherever the bar passes over it
+  if (fillW > 0) {
+    u8g2.drawBox(barX, y - 8, fillW, 9);
+  }
+  u8g2.setDrawColor(1);
+}
+
+// Same "draw label, XOR-fill it as the hold progresses" idea as
+// drawHoldSweep() above, but anchored at an explicit x instead of
+// always centered on the full 128px width - used by the Pattern Mode
+// editor's directional arrows (see render()), which sit at the
+// screen's own left/right edges. Unlike drawHoldSweep(), the first
+// GRACE_MS shows a brief inverted flash rather than nothing at all -
+// immediate confirmation that the press registered, even for a tap
+// far too short to matter for fast-scroll - before settling into the
+// normal "draw label, grow the XOR fill" sweep.
+void drawDirectionalSweep(const char* label, uint32_t heldMs, uint32_t totalMs, int x, int y) {
+  const uint32_t GRACE_MS = 350;
+  int w = u8g2.getStrWidth(label);
+
+  if (heldMs < GRACE_MS) {
+    u8g2.drawBox(x - 1, y - 7, w + 2, 9);
+    u8g2.setDrawColor(0);
+    u8g2.drawStr(x, y, label);
+    u8g2.setDrawColor(1);
+    return;
+  }
+
+  u8g2.drawStr(x, y, label);
+
+  float progress = (float)(heldMs - GRACE_MS) / (float)(totalMs - GRACE_MS);
+  if (progress > 1.0f) progress = 1.0f;
+
+  int fillW = (int)(w * progress);
+  u8g2.setDrawColor(2); // XOR: inverts the label wherever the bar passes over it
+  if (fillW > 0) {
+    u8g2.drawBox(x, y - 7, fillW, 9);
+  }
+  u8g2.setDrawColor(1);
+}
+
+// Builds one frame of the fast-scroll "chase" animation for the
+// Pattern Mode editor's directional arrows: a single arrow character
+// stepping through 3 fixed slots, always running from the back toward
+// the front - left-to-right for the ">>>" (Divisor/forward) arrow,
+// right-to-left for "<<<" (Custom/back) - giving a sense of motion
+// instead of a static tripled arrow. out must have room for 4 bytes
+// (3 slots + terminator). u8g2_font_5x7_tr is fixed-width, so a space
+// and an arrow character advance the same amount - the string's
+// on-screen width (and thus its centering) stays identical across
+// every frame.
+void buildChaseFrame(char out[4], char arrowChar, bool pointsRight) {
+  int step = (millis() / PATTERN_EDIT_CHASE_MS) % 3;
+  int activeSlot = pointsRight ? step : (2 - step);
+  for (int i = 0; i < 3; i++) out[i] = (i == activeSlot) ? arrowChar : ' ';
+  out[3] = '\0';
+}
+
 // Simulates "dimming" on the monochrome display via a dot pattern
 // (checkerboard, every other pixel) instead of a solid area - this
 // looks lighter/less obtrusive than a full white box.
@@ -1086,6 +1716,380 @@ void drawDitheredBox(int x, int y, int w, int h) {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Marker symbol drawing (shared by Pattern Mode's grid, editor, and SCROLLING)
+// ---------------------------------------------------------------------------
+// Fixed on-screen sizes for the shape-based symbols (square, circle,
+// triangle) - never stretched to fill whatever inset area a cell
+// happens to have (that stretching was especially visible on square/
+// circle, since cells aren't square themselves - fixed row height,
+// variable column width - so a "circle" at x8 was actually a tall,
+// narrow oval). LARGE is used in the roomier wide-column views
+// (x1/x2/x4, and SCROLLING windows of the same size - inset width
+// >= SONG_SYMBOL_ROOMY_MIN_W); SMALL in the narrow-column views
+// (x8/x16, SCROLLING windows of the same size, and the Pattern Mode
+// editor - inset width well under that). SMALL is sized to comfortably
+// fit inside the narrowest of those (~11px inset); LARGE is one size
+// up, still well within the wide views' inset (>=27px at x4).
+#define SONG_SYMBOL_SIZE_SMALL 9
+#define SONG_SYMBOL_SIZE_LARGE 12
+#define SONG_SYMBOL_ROOMY_MIN_W 20
+
+// Selects how a marker symbol is rendered:
+//   SYMFILL_OUTLINE - plain outline, current draw color - the
+//                     default "marker placed" look.
+//   SYMFILL_SOLID   - a small solid mark of its own (X gets its own
+//                     small background box, cut out for the glyph,
+//                     since a font glyph has no "filled" variant of
+//                     its own) - the steady "this marker's bar has
+//                     already played this cycle" look (CYCLING's
+//                     isFilled) and the Pattern Mode editor's
+//                     cursor-blink look. Never itself blinks on the
+//                     beat.
+//   SYMFILL_CUTOUT  - the caller has already painted a *solid* box
+//                     over this cell (the same fill a marker-less
+//                     cell's own beat-pulse blink would draw) - this
+//                     only punches the symbol's own shape out of
+//                     that fill (drawn in color 0), rather than the
+//                     symbol's own fill toggling. That way the pulse
+//                     blink lives entirely in the cell's background,
+//                     exactly like a marker-less cell, and the
+//                     marker's shape itself never changes.
+
+// Draws one of the 4 marker symbols into a grid cell. x,y,w,h is the
+// cell's usual inset drawing area - only used here to find the cell's
+// center and to tell a wide cell from a narrow one; the symbols
+// themselves render at their own fixed size (see above for the
+// shapes, and the font size switch below for X), not stretched to
+// fill w/h. Narrow cells (x8/x16 and their SCROLLING/Pattern-Mode-
+// editor equivalents) render everything 1px further left than a
+// naive centered calculation would - their column widths round to an
+// odd/even alternating sequence (124px / 8 isn't even), which
+// otherwise reads as visibly off-center.
+void drawSongSymbol(uint8_t symbol, int x, int y, int w, int h, SongSymbolFill fill) {
+  bool roomy = (w >= SONG_SYMBOL_ROOMY_MIN_W);
+  int cx = x + w / 2 - (roomy ? 0 : 1); // narrow cells: 1px left correction, see above
+  int cy = y + h / 2;
+
+  int targetSize = roomy ? SONG_SYMBOL_SIZE_LARGE : SONG_SYMBOL_SIZE_SMALL;
+  int sw = (w < targetSize) ? w : targetSize;
+  int sh = (h < targetSize) ? h : targetSize;
+  int sx = cx - sw / 2;
+  int sy = cy - sh / 2;
+
+  // SOLID and CUTOUT both draw the shape's "filled" variant - only
+  // the draw color differs (CUTOUT punches into an already-solid
+  // background, so it draws in color 0 instead of the ambient color).
+  bool drawFilledShape = (fill != SYMFILL_OUTLINE);
+  if (fill == SYMFILL_CUTOUT) u8g2.setDrawColor(0);
+
+  switch (symbol) {
+    case SONG_SYM_SQUARE:
+      if (drawFilledShape) u8g2.drawBox(sx, sy, sw, sh);
+      else                 u8g2.drawFrame(sx, sy, sw, sh);
+      break;
+    case SONG_SYM_CIRCLE: {
+      int r = ((sw < sh) ? sw : sh) / 2;
+      if (drawFilledShape) u8g2.drawDisc(cx, cy, r);
+      else                 u8g2.drawCircle(cx, cy, r);
+      break;
+    }
+    case SONG_SYM_TRIANGLE:
+      if (drawFilledShape) {
+        u8g2.drawTriangle(sx, sy + sh - 1, sx + sw - 1, sy + sh - 1, cx, sy);
+      } else {
+        u8g2.drawLine(sx, sy + sh - 1, sx + sw - 1, sy + sh - 1);
+        u8g2.drawLine(sx, sy + sh - 1, cx, sy);
+        u8g2.drawLine(sx + sw - 1, sy + sh - 1, cx, sy);
+      }
+      break;
+    case SONG_SYM_X:
+    default: {
+      // A larger, more legible font in the roomier one-full-height-
+      // row cells (x1/x2/x4/x8 - h >= 24), the smaller font in the
+      // tighter two-half-height-row cells (x16, SCROLLING, the
+      // Pattern Mode editor - h < 24), where the bigger font wouldn't
+      // fit. Restored to u8g2_font_5x7_tr afterwards, since every
+      // caller of drawSongSymbol() assumes that's still the active
+      // font.
+      const uint8_t* xFont = (h >= 24) ? u8g2_font_9x15_tf : u8g2_font_6x10_tf;
+      u8g2.setFont(xFont);
+      int strW = u8g2.getStrWidth("X");
+      int strX = cx - strW / 2;
+      if (fill == SYMFILL_SOLID) {
+        // Own small solid background box (sized to the glyph plus a
+        // small fixed padding, not the full cell) - always a
+        // self-contained two-color operation regardless of the
+        // ambient draw color, since a font glyph has no "filled"
+        // variant of its own to switch to.
+        int bw = strW + 4;
+        int bh = (u8g2.getAscent() - u8g2.getDescent()) + 4;
+        if (bw > w) bw = w; // defensive clamp, never actually hit with our cell sizes
+        if (bh > h) bh = h;
+        int bx = cx - bw / 2;
+        int by = cy - bh / 2;
+        int strY = by + (bh + u8g2.getAscent()) / 2;
+        u8g2.drawBox(bx, by, bw, bh);
+        u8g2.setDrawColor(0);
+        u8g2.drawStr(strX, strY, "X");
+        u8g2.setDrawColor(1);
+      } else {
+        // OUTLINE: plain glyph in the ambient color. CUTOUT: the same
+        // glyph, just drawn in color 0 (set above) onto the caller's
+        // already-painted solid background - no separate box needed
+        // here since that background already covers the full cell.
+        int strY = y + (h + u8g2.getAscent()) / 2;
+        u8g2.drawStr(strX, strY, "X");
+      }
+      u8g2.setFont(u8g2_font_5x7_tr);
+      break;
+    }
+  }
+
+  if (fill == SYMFILL_CUTOUT) u8g2.setDrawColor(1);
+}
+
+// Powers the SCROLLING grid mode (see gridMode) - the current bar
+// always sits blinking in the first cell (top-left), never advancing
+// position on screen, and always shows *something* there (a filled
+// pulse if there's no marker) so it's never ambiguous whether
+// playback is moving. Bars run continuously right to left, every
+// following cell (2nd, 3rd, ...) showing whichever patternMarkers[]
+// entry (if any) sits that many bars ahead, so an upcoming marker
+// visibly scrolls in from the right well before it actually arrives.
+// An empty cell (no marker) shows the absolute bar number instead
+// wherever that bar is a multiple of the window size - the last bar
+// of that mini-cycle (windowSize 16 -> 16, 32, 64, ...; windowSize 4
+// -> 4, 8, 12, ...) - so a stretch with no markers at all still gives
+// a concrete sense of which bar a cell corresponds to.
+//
+// Cell frames, fill states, grouping separators and row/column
+// divider lines are all identical to the plain divisor grid's own
+// cells in render() (see there) - windowSize plays exactly the role
+// div_ does there, right down to reusing settings.gridSeparatorsEnabled
+// and the same rowsPerGroup/groupSepH/refFootprintH rules. The only
+// intentional difference is content: there's no "already elapsed"
+// concept here (every cell beyond the current one is still ahead), so
+// the dithered elapsed-fill never applies, and a plain empty cell
+// shows its bar number instead of nothing. Window size (how many bars
+// ahead are visible at once) = divisor(), capped to
+// SCROLLING_MAX_WINDOW_BARS (16) - so in practice only the "x16" and
+// "no grouping" branches below are ever reached; the x32/x64 branches
+// and the thinRows fallback are kept only for exact parity with
+// render() (and in case that cap is ever raised).
+void renderScrollingGrid(uint32_t barSnapshot, bool runningSnap, bool flashHideBar, bool beatPulseOnNormal) {
+  if (flashHideBar) return;
+
+  const int barX = 2, barW = 124;
+  const int lowerY = 18;
+
+  uint8_t windowSize = divisor();
+  if (windowSize > SCROLLING_MAX_WINDOW_BARS) windowSize = SCROLLING_MAX_WINDOW_BARS;
+
+  uint8_t segsPerRow = (windowSize < 8) ? windowSize : 8;
+  uint8_t rows       = (windowSize + 7) / 8;
+
+  uint8_t rowsPerGroup;
+  int groupSepH;
+  int refFootprintH;
+  if (settings.gridSeparatorsEnabled) {
+    if (windowSize == 32)      { rowsPerGroup = 2; groupSepH = 3; }
+    else if (windowSize == 64) { rowsPerGroup = 4; groupSepH = 3; }
+    else if (windowSize == 16) { rowsPerGroup = 1; groupSepH = 1; }
+    else                       { rowsPerGroup = 4; groupSepH = 1; }
+    refFootprintH = 35;
+  } else {
+    rowsPerGroup = rows;
+    groupSepH = 0;
+    refFootprintH = 32;
+  }
+  uint8_t numGroups = (rows + rowsPerGroup - 1) / rowsPerGroup;
+  uint8_t numGroupSeps = (numGroups > 0) ? (numGroups - 1) : 0;
+
+  int rowH = (refFootprintH - numGroupSeps * groupSepH) / rows;
+  if (rowH < 1) rowH = 1; // safety net, never actually hit with our window sizes
+
+  bool thinRows = rowH < 4; // never actually hit at windowSize <= 16, kept for parity with render()
+
+  for (uint8_t r = 0; r < rows; r++) {
+    uint8_t groupsBefore = r / rowsPerGroup;
+    int y = lowerY + r * rowH + groupsBefore * groupSepH;
+    for (uint8_t i = 0; i < segsPerRow; i++) {
+      uint32_t k = (uint32_t)r * segsPerRow + i; // 0 = current bar (fixed, first cell), higher = further ahead
+      if (k >= windowSize) continue; // only relevant if windowSize weren't a power of 2 - defensive
+      int x0 = barX + (i * barW) / segsPerRow;
+      int x1 = barX + ((i + 1) * barW) / segsPerRow;
+      int segWpx = x1 - x0;
+
+      uint32_t absoluteBar1Based = barSnapshot + k + 1;
+      uint8_t symbol = 0;
+      bool symbolIsFirstOfType = false;
+      bool hasSymbol = findPatternMarkerSymbolAt(barSnapshot, (uint8_t)k, symbol, symbolIsFirstOfType);
+
+      // The current bar (k=0) always gets a visible "now" cursor,
+      // marker or not - otherwise, with no marker sitting exactly on
+      // the current bar, there would be nothing at all on screen
+      // confirming playback is even moving.
+      bool isActivePulse = (k == 0 && runningSnap && beatPulseOnNormal);
+
+      if (hasSymbol) {
+        // Same treatment as the plain divisor grid's marker cells:
+        // the cell's normal frame stays exactly as it always would.
+        // On the beat pulse, the background fills solid exactly like
+        // a marker-less cell's own pulse (see the non-marker branch
+        // below) and the symbol is cut out of it instead of the
+        // symbol's own fill toggling - the marker's shape never
+        // blinks, only the cell's background does. The first marker
+        // of each new symbol run (symbolIsFirstOfType) gets a steady
+        // solid mark too, so a change of symbol is visible at a
+        // glance without needing to read every marker individually.
+        u8g2.drawFrame(x0, y, segWpx, rowH);
+        // 124px / 8 isn't even, so columns alternate 15/16px wide
+        // (even i -> 15, odd i -> 16) once segsPerRow reaches 8 (the
+        // x8/x16-equivalent windows). The narrower, odd-width columns
+        // render 1px further left than drawSongSymbol()'s own
+        // centering accounts for - shift those specifically back
+        // right. Narrower/rarer at x1/x2/x4, where segsPerRow < 8 and
+        // every column is already an even width.
+        bool oddWidthCol = (segsPerRow == 8) && ((i % 2) == 0);
+        int symX = x0 + 2 + (oddWidthCol ? 1 : 0);
+        if (isActivePulse) {
+          u8g2.drawBox(x0 + 1, y + 1, segWpx - 2, rowH - 2);
+          drawSongSymbol(symbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_CUTOUT);
+        } else if (symbolIsFirstOfType) {
+          drawSongSymbol(symbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_SOLID);
+        } else {
+          drawSongSymbol(symbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_OUTLINE);
+        }
+      } else if (thinRows) {
+        if (isActivePulse) u8g2.drawBox(x0, y, segWpx, rowH);
+      } else {
+        u8g2.drawFrame(x0, y, segWpx, rowH);
+        if (isActivePulse) {
+          u8g2.drawBox(x0 + 1, y + 1, segWpx - 2, rowH - 2);
+        } else if (absoluteBar1Based % windowSize == 0) {
+          // No marker, not the current bar: a cell landing on a
+          // multiple of the window size is the last bar of that
+          // mini-cycle - shown as its own bar number, inset the same
+          // way a marker symbol would be, rather than the plain
+          // divisor grid's dithered "elapsed" fill (nothing has
+          // elapsed yet here). Uses the same small 4x6 font as the
+          // MIDI Monitor event log to fit inside the narrow cells,
+          // restored to u8g2_font_5x7_tr afterwards like
+          // drawSongSymbol() does.
+          char numBuf[8];
+          sprintf(numBuf, "%lu", (unsigned long)absoluteBar1Based);
+          u8g2.setFont(u8g2_font_4x6_tf);
+          int strW = u8g2.getStrWidth(numBuf);
+          int strX = x0 + (segWpx - strW) / 2;
+          int strY = y + (rowH + u8g2.getAscent()) / 2;
+          u8g2.drawStr(strX, strY, numBuf);
+          u8g2.setFont(u8g2_font_5x7_tr);
+        }
+      }
+    }
+  }
+
+  // Redraw separator lines between segments inverted (color0), exact
+  // same treatment as the plain divisor grid, so they stay visible as
+  // a gap even over a filled/blinking cell or a bar-number label.
+  u8g2.setDrawColor(0);
+  for (uint8_t r = 0; r < rows; r++) {
+    uint8_t groupsBefore = r / rowsPerGroup;
+    int y = lowerY + r * rowH + groupsBefore * groupSepH;
+    for (uint8_t i = 1; i < segsPerRow; i++) {
+      int x = barX + (i * barW) / segsPerRow;
+      u8g2.drawVLine(x, y, rowH);
+    }
+  }
+  // Same as render(): skip rows that start a new group (they already
+  // have a real gap above them instead of a shared border to erase).
+  if (!thinRows) {
+    for (uint8_t r = 1; r < rows; r++) {
+      if (r % rowsPerGroup == 0) continue;
+      uint8_t groupsBefore = r / rowsPerGroup;
+      int y = lowerY + r * rowH + groupsBefore * groupSepH;
+      u8g2.drawHLine(barX, y, barW);
+    }
+  }
+  u8g2.setDrawColor(1);
+}
+
+// Draws the x16 window containing patternEditCursorBar (see the
+// PATTERN MODE marker paint editor section above) - the same cell
+// geometry as the normal grid's own x16 case (2 rows of 8, 17px tall),
+// but window position is driven by the edit cursor rather than the
+// live transport. Every cell's frame is always drawn, marker or not -
+// painting adds a symbol inset inside it, it never replaces the frame
+// itself. The cursor's own cell blinks: with a marker, the symbol
+// alternates filled/outline; without one, a plain filled mark blinks
+// inside the frame so the cursor stays visible either way. Crossing
+// bar 16/1 of the current window automatically pages to the next/
+// previous window, since windowStart is simply derived from the
+// cursor position.
+void renderPatternEditGrid() {
+  const int barX = 2, barW = 124;
+  const int lowerY = 18;
+  const int rowH = 17; // matches the normal grid's own x16 case exactly
+  const uint8_t segsPerRow = 8;
+  const uint8_t rows = 2;
+
+  uint32_t windowStart = ((patternEditCursorBar - 1) / 16) * 16; // 0-based
+  bool blinkOn = (millis() / PATTERN_EDIT_BLINK_MS) % 2 == 0;
+
+  for (uint8_t r = 0; r < rows; r++) {
+    int y = lowerY + r * rowH;
+    for (uint8_t i = 0; i < segsPerRow; i++) {
+      uint32_t idx = (uint32_t)r * segsPerRow + i;
+      uint32_t absBar = windowStart + idx + 1; // 1-based
+      int x0 = barX + (i * barW) / segsPerRow;
+      int x1 = barX + ((i + 1) * barW) / segsPerRow;
+      int segWpx = x1 - x0;
+
+      uint8_t symbol = 0;
+      bool hasMarker = false;
+      for (uint16_t m = 0; m < patternMarkerCount; m++) {
+        if (patternMarkers[m].bar == absBar) { symbol = patternMarkers[m].symbol; hasMarker = true; break; }
+      }
+
+      // The cell's frame always stays - painting only ever adds
+      // something inset inside it, never swaps it out.
+      u8g2.drawFrame(x0, y, segWpx, rowH);
+
+      // 124px / 8 isn't even, so columns alternate 15/16px wide (even
+      // i -> 15, odd i -> 16) - the narrower, odd-width columns
+      // render 1px further left than drawSongSymbol()'s own centering
+      // accounts for, same fix as the live CYCLING/SCROLLING grids.
+      bool oddWidthCol = ((i % 2) == 0);
+      int symX = x0 + 2 + (oddWidthCol ? 1 : 0);
+
+      bool isCursor = (absBar == patternEditCursorBar);
+      if (hasMarker) {
+        // On the cursor's own cell, the symbol blinks filled/outline;
+        // everywhere else it's a plain outline.
+        drawSongSymbol(symbol, symX, y + 2, segWpx - 4, rowH - 4, (isCursor && blinkOn) ? SYMFILL_SOLID : SYMFILL_OUTLINE);
+      } else if (isCursor && blinkOn) {
+        // No marker here yet, but this is where the cursor sits - a
+        // blinking filled mark inside the frame keeps it visible.
+        u8g2.drawBox(x0 + 2, y + 2, segWpx - 4, rowH - 4);
+      }
+    }
+  }
+
+  // Separator lines between segments, inverted, same treatment as the
+  // other grids.
+  u8g2.setDrawColor(0);
+  for (uint8_t r = 0; r < rows; r++) {
+    int y = lowerY + r * rowH;
+    for (uint8_t i = 1; i < segsPerRow; i++) {
+      int x = barX + (i * barW) / segsPerRow;
+      u8g2.drawVLine(x, y, rowH);
+    }
+  }
+  u8g2.drawHLine(barX, lowerY + rowH, barW);
+  u8g2.setDrawColor(1);
 }
 
 // ---------------------------------------------------------------------------
@@ -1253,6 +2257,21 @@ void renderAnalyzer() {
     }
   }
 
+  if (btnCustom.isPressed && !btnDivisor.isPressed && !btnReset.isPressed && !customLongAlreadyHandled) {
+    // Solo Custom hold heading back out via
+    // onCustomButtonLongHeldDuringPress()'s Analyzer toggle - same
+    // sweep as everywhere else, just needs the bigger font switched in
+    // first since this whole screen normally uses the smaller one.
+    // customLongAlreadyHandled guards against the SAME continuous
+    // press that just toggled us into this screen immediately
+    // rendering as a "complete" LEAVE sweep too (millis()-pressStartMs
+    // is already >=LONGPRESS_MS at that instant) - the button must be
+    // released and pressed again fresh before this sweep reappears.
+    uint32_t heldMs = millis() - btnCustom.pressStartMs;
+    u8g2.setFont(u8g2_font_5x7_tr);
+    drawHoldSweep("LEAVE", heldMs, LONGPRESS_MS, 35);
+  }
+
   u8g2.sendBuffer();
 }
 
@@ -1340,13 +2359,32 @@ void render() {
   uint32_t ticksIntoCycle = ticksSnapshot % ticksPerCycle;
   uint32_t barsIntoCycle  = ticksIntoCycle / ((uint32_t)bpb * 24);
 
+  // Absolute (0-based) bar the current div_-bar window begins at - used
+  // by the Pattern Mode marker lookup below to match a marker's actual
+  // bar number rather than just its position within the repeating
+  // cycle (see findPatternMarkerSymbolAt()).
+  uint32_t cycleWindowStartBar = barSnapshot - barsIntoCycle;
+
   // ---------------- Header row: time (A) | status/reset (G) | BPM (D) ----------------
-  bool nothingToResetShowing = btnReset.isPressed && !runningSnap && !hasSomethingToReset();
+  // Reset+Custom held together is the Operation Setup entry chord (see
+  // loop()'s leaveComboHoldActive), not a Reset gesture - so as soon as
+  // Custom joins in, none of the plain Reset 1/2 header feedback below
+  // should appear (it would otherwise show alongside/underneath the
+  // "OPERATION SETUP" sweep once the chord is recognized).
+  bool resetComboWithCustomHeld = btnReset.isPressed && btnCustom.isPressed;
+  bool nothingToResetShowing = btnReset.isPressed && !runningSnap && !hasSomethingToReset() && !resetComboWithCustomHeld;
   // No MIDI clock received for 5s while we're in STOP ->
   // "NO MIDI-CLOCK" instead of "STOP" is shown, tempo (D) is hidden. Only
   // relevant at the lowest priority level (no reset feedback/nudge active).
   bool noMidiClockShowing = !runningSnap && (millis() - lastClockTickMillis > 5000);
 
+  if (patternEditActive) {
+    // A+G are replaced entirely by a single static label while the
+    // marker paint editor is active - see patternEditActive.
+    const char* msg = "SET MARKERS";
+    int w = u8g2.getStrWidth(msg);
+    u8g2.drawStr((128 - w) / 2, 7, msg);
+  } else {
   char timeBuf[8];
   uint32_t elapsedMs = timeIsPaused ? (pausedAt - startMillis) : (millis() - startMillis);
   formatTime(timeBuf, elapsedMs);
@@ -1362,7 +2400,7 @@ void render() {
     const char* msg = "NOTHING TO RESET";
     int w = u8g2.getStrWidth(msg);
     u8g2.drawStr((128 - w) / 2, 7, msg);
-  } else if (btnReset.isPressed) {
+  } else if (btnReset.isPressed && !resetComboWithCustomHeld) {
     // Live feedback while held (Eurorack-style two-phase): for the
     // first RESET_CONFIRM_MS, just shows "RESET 1" plainly (that's
     // what releasing right now would register) with no sweep bar yet.
@@ -1434,16 +2472,19 @@ void render() {
       u8g2.drawStr((128 - w) / 2, 7, statusBuf);
     }
   }
+  } // end of the pre-existing A+G content (else branch of "if (patternEditActive)" above)
 
   char bpmBuf[10];
   dtostrf(bpmFiltered, 4, 1, bpmBuf);
-  if (!nothingToResetShowing && !noMidiClockShowing) {
+  if (!nothingToResetShowing && !noMidiClockShowing && !patternEditActive) {
     u8g2.drawStr(100, 7, bpmBuf);
   }
 
-  // ---------------- Top bar: beat progress (5px) ----------------
+  // ---------------- Top bar: beat progress (5px) / SET MARKERS nav arrows ----------------
   const int barX = 2, barW = 124;
   const int topY = 9, topH = 5;
+
+  if (!patternEditActive) {
   u8g2.drawFrame(barX, topY, barW, topH);
 
   float beatProgress = ((float)beatSnapshot * 24.0f + tickExtrapolated) / (float)(bpb * 24);
@@ -1464,6 +2505,61 @@ void render() {
     u8g2.drawVLine(barX + (i * barW) / bpb, topY, topH);
   }
   u8g2.setDrawColor(1);
+  } else {
+    // Beat progress doesn't mean anything while editing markers -
+    // Custom/Divisor navigate the paint cursor here instead of
+    // moving through a beat (see onCustomButton()/onDivisorButton()).
+    // A pair of directional arrows takes the bar's place: "<"
+    // (Custom, back) on the left, ">" (Divisor/Grid, forward) on the
+    // right - static by default, since they're not signaling anything
+    // to notice; the only visual change is a press itself, via
+    // drawDirectionalSweep()'s own brief flash-then-sweep. Once
+    // fast-scrolling actually kicks in (see onCustomHeldDuringPress()/
+    // onDivisorHeldDuringPress()), a single arrow chases across the
+    // tripled "<<<"/">>>" instead (see buildChaseFrame()) - the
+    // sweep's job (signaling "about to speed up") is done by then,
+    // this is "already moving". Either arrow is left out entirely
+    // once that direction is actually a dead end (cursor already at
+    // bar 1 or 9999, see onCustomButton()/onDivisorButton()) - an
+    // arrow implies you can press it, so it shouldn't be there at all
+    // once that's no longer true.
+    const int navY = 15;
+
+    if (patternEditCursorBar > 1) {
+      const char* leftLabel = patternEditCustomFastScrolling ? "<<<" : "<";
+      if (patternEditCustomFastScrolling) {
+        char buf[4];
+        buildChaseFrame(buf, '<', false);
+        u8g2.drawStr(barX, navY, buf);
+      } else if (btnCustom.isPressed) {
+        drawDirectionalSweep(leftLabel, millis() - btnCustom.pressStartMs, 1000, barX, navY);
+      } else {
+        u8g2.drawStr(barX, navY, leftLabel);
+      }
+    }
+
+    if (patternEditCursorBar < 9999) {
+      const char* rightLabel = patternEditDivisorFastScrolling ? ">>>" : ">";
+      int rightW = u8g2.getStrWidth(rightLabel);
+      int rightX = barX + barW - rightW;
+      if (patternEditDivisorFastScrolling) {
+        char buf[4];
+        buildChaseFrame(buf, '>', true);
+        u8g2.drawStr(rightX, navY, buf);
+      } else if (btnDivisor.isPressed) {
+        drawDirectionalSweep(rightLabel, millis() - btnDivisor.pressStartMs, 1000, rightX, navY);
+      } else {
+        u8g2.drawStr(rightX, navY, rightLabel);
+      }
+    }
+
+    // Short reminder of what Reset actually does here, centered
+    // between the two arrows - phrased to match whatever the current
+    // tool would do (paint the selected symbol, or erase with DEL).
+    const char* hint = (patternEditTool == 4) ? "RESET = DELETE" : "RESET = PLACE";
+    int hintW = u8g2.getStrWidth(hint);
+    u8g2.drawStr((128 - hintW) / 2, navY, hint);
+  }
 
   // ---------------- Nudge position bar (4px, nudge mode only) ----------------
   // Sits in the gap between E (ends at y=14) and F (starts at
@@ -1497,8 +2593,14 @@ void render() {
     u8g2.drawVLine(centerX, nudgeY, nudgeH); // center marker, always visible
   }
 
-  // ---------------- Bottom bar: divisor cycle ----------------
+  // ---------------- Bottom bar: divisor cycle / timeline / pattern paint editor ----------------
   const int lowerY = 18;
+
+  if (patternEditActive) {
+    renderPatternEditGrid();
+  } else if (gridMode == GRIDMODE_SCROLLING) {
+    renderScrollingGrid(barSnapshot, runningSnap, flashHideBar, beatPulseOnNormal);
+  } else {
   uint8_t segsPerRow = (div_ < 8) ? div_ : 8;
   uint8_t rows = (div_ + 7) / 8; // rounded up, gives 1/2/4/8/16 with our values
 
@@ -1561,7 +2663,50 @@ void render() {
         bool beatPulseOn = activeInLastRow ? beatPulseOnFast : beatPulseOnNormal;
         bool isActivePulse = (globalIndex == barsIntoCycle && runningSnap && beatPulseOn);
 
-        if (thinRows) {
+        uint8_t markerSymbol;
+        bool markerIsFirstOfType;
+        bool markerEligibleDivisor = (div_ == 1 || div_ == 2 || div_ == 4 || div_ == 8 || div_ == 16);
+        if (markerEligibleDivisor && findPatternMarkerSymbolAt(cycleWindowStartBar, (uint8_t)globalIndex, markerSymbol, markerIsFirstOfType)) {
+          // Pattern Mode marker: the cell's normal frame stays exactly
+          // as it always would. On the beat pulse, the background
+          // fills solid exactly like a marker-less cell's own pulse
+          // (see the non-marker branch below) and the symbol is cut
+          // out of it instead of the symbol's own fill toggling - the
+          // beat blink itself now lives entirely in the cell's
+          // background, never in the marker's shape. Once played this
+          // cycle (isFilled), the background gets the exact same
+          // dithered "elapsed" fill a marker-less cell would, with the
+          // marker's own steady solid mark on top of it. The first
+          // marker of each new symbol run (markerIsFirstOfType) gets
+          // that same steady solid mark too, even before it's been
+          // played, so a change of symbol is visible at a glance
+          // without needing to read every marker individually. Only
+          // x1/x2/x4/x8/x16 have cells that map 1:1 onto one bar each
+          // - x32/x64/x128 group multiple bars per cell, so a single
+          // marker bar wouldn't have one clear cell to appear in
+          // there.
+          u8g2.drawFrame(x0, y, segWpx, rowH);
+          // 124px / 8 isn't even, so columns alternate 15/16px wide
+          // (even i -> 15, odd i -> 16) once segsPerRow reaches 8
+          // (the x8/x16 divisors). The narrower, odd-width columns
+          // render 1px further left than drawSongSymbol()'s own
+          // centering accounts for - shift those specifically back
+          // right. Narrower/rarer at x1/x2/x4, where segsPerRow < 8
+          // and every column is already an even width.
+          bool oddWidthCol = (segsPerRow == 8) && ((i % 2) == 0);
+          int symX = x0 + 2 + (oddWidthCol ? 1 : 0);
+          if (isActivePulse) {
+            u8g2.drawBox(x0 + 1, y + 1, segWpx - 2, rowH - 2);
+            drawSongSymbol(markerSymbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_CUTOUT);
+          } else if (isFilled) {
+            drawDitheredBox(x0 + 1, y + 1, segWpx - 2, rowH - 2);
+            drawSongSymbol(markerSymbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_SOLID);
+          } else if (markerIsFirstOfType) {
+            drawSongSymbol(markerSymbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_SOLID);
+          } else {
+            drawSongSymbol(markerSymbol, symX, y + 2, segWpx - 4, rowH - 4, SYMFILL_OUTLINE);
+          }
+        } else if (thinRows) {
           // Very thin rows: no frame, fill fully without inset directly,
           // otherwise nothing would remain visible after the inset at
           // 2px row height.
@@ -1634,15 +2779,81 @@ void render() {
       }
     }
   }
+  } // end of the pre-existing divisor-cycle grid (else branch of "if (gridMode == GRIDMODE_SCROLLING)" above)
 
   // ---------------- Footer: B+C (bar/cycle end) | time signature (H) | divisor (I) ----------------
   const int footY = 62;
+
+  if (patternEditActive) {
+    // BAR (B+C) stays in its usual left-side spot and format - just
+    // repurposed: B is now the edit cursor's own bar instead of the
+    // live transport's, and C (normally the next cycle-end bar) is now
+    // the end of the current 16-bar window the cursor is in, so you
+    // can see how much room is left before it pages. H is replaced by
+    // the current paint tool (blinking, cycled with Reset - see
+    // patternEditTool/onResetButton()); divisor/time signature aren't
+    // meaningful controls here (Custom/Divisor navigate the cursor
+    // instead - see onCustomButton()/onDivisorButton()), so I instead
+    // shows how many of the available marker slots are used.
+    char cursorBarBuf[16];
+    sprintf(cursorBarBuf, "BAR %lu", (unsigned long)patternEditCursorBar);
+    int cursorBarWidth = u8g2.getStrWidth(cursorBarBuf);
+    u8g2.drawStr(2, footY, cursorBarBuf);
+    if ((millis() / PATTERN_EDIT_BLINK_MS) % 2 == 0) {
+      uint32_t windowStart = ((patternEditCursorBar - 1) / 16) * 16; // 0-based
+      uint32_t cycleEndBar = windowStart + 16;
+      char cycleBuf[10];
+      snprintf(cycleBuf, sizeof(cycleBuf), ">%lu", (unsigned long)cycleEndBar);
+      u8g2.drawStr(2 + cursorBarWidth + 2, footY, cycleBuf);
+    }
+
+    // How many of the (now 500) available marker slots are used - the
+    // one thing that actually limits how far you can paint, not the
+    // bar range itself (which goes to 9999) - see
+    // paintPatternMarkerAtCursor(). Computed here, ahead of its own
+    // draw call further down, since the tool indicator's centering
+    // below needs its width too.
+    char countBuf[16];
+    snprintf(countBuf, sizeof(countBuf), "%u/%u", patternMarkerCount, PATTERN_MARKER_COUNT);
+    int countWidth = u8g2.getStrWidth(countBuf);
+
+    // Tool indicator centers in the space actually left between BAR
+    // (left) and the marker count (right), rather than a fixed screen
+    // position - stays visually balanced regardless of how wide
+    // either neighbor's text is. Deliberately ignores the blinking
+    // cycle-end text (">N") that sometimes appears right after BAR -
+    // including it would make the tool indicator jump sideways on
+    // every beat pulse instead of staying put.
+    int toolAreaLeft  = 2 + cursorBarWidth + 2;
+    int toolAreaRight = 126 - countWidth - 2;
+    int toolCenterX   = (toolAreaLeft + toolAreaRight) / 2;
+
+    bool toolBlinkOn = (millis() / PATTERN_EDIT_BLINK_MS) % 2 == 0;
+    if (patternEditTool == 4) {
+      const char* delStr = "DEL";
+      int w = u8g2.getStrWidth(delStr);
+      drawBlinkableText(toolCenterX - w / 2, footY, delStr, toolBlinkOn);
+    } else {
+      // drawBlinkableSymbol()'s 9px-wide highlight box is centered 3px
+      // right of the x it's given (box spans x-1..x+7) - offset here
+      // so the box itself, not its origin, lands on toolCenterX.
+      drawBlinkableSymbol(patternEditTool, toolCenterX - 3, footY - 7, toolBlinkOn);
+    }
+
+    u8g2.drawStr(126 - countWidth, footY, countBuf);
+  } else {
 
   char barBuf[16];
   sprintf(barBuf, "BAR %lu", (unsigned long)(barSnapshot + 1)); // 1-based for display
   int barTextWidth = u8g2.getStrWidth(barBuf);
 
   uint32_t barDisplay1Based = barSnapshot + 1;
+  // Same "last bar of the current cycle" computation as CYCLING,
+  // now used unconditionally in SCROLLING too - the grid itself
+  // already shows the next marker scrolling in from the right (see
+  // renderScrollingGrid()), so this blinking footer number stays the
+  // plain cycle end in both modes rather than duplicating that
+  // lookahead here.
   uint32_t cycleEndBar = ((barDisplay1Based + div_ - 1) / div_) * div_;
   char cycleBuf[10];
   sprintf(cycleBuf, ">%lu", (unsigned long)cycleEndBar);
@@ -1673,6 +2884,32 @@ void render() {
   sprintf(divBuf, "x%u %s", div_, (div_ > 1) ? "BARS" : "BAR");
   int divWidth = u8g2.getStrWidth(divBuf);
   u8g2.drawStr(126 - divWidth, footY, divBuf);
+
+  } // end of the pre-existing footer content (else branch of "if (patternEditActive)" above)
+
+  if (leaveComboHoldActive) {
+    uint32_t heldMs = millis() - leaveComboHoldStartMs;
+    drawHoldSweep(patternEditActive ? "LEAVE" : "OPERATION SETUP", heldMs, 1000, 35);
+  } else if (nudgeComboHoldActive) {
+    uint32_t heldMs = millis() - nudgeComboHoldStartMs;
+    // Same toggle combo both ways - currentMode hasn't changed yet
+    // while the hold is still in progress, so it still reflects
+    // which direction this hold is heading: MODE_NUDGE means this
+    // hold is on its way back OUT (show LEAVE, like every other exit
+    // gesture), anything else means it's heading IN (show NUDGE).
+    drawHoldSweep(currentMode == MODE_NUDGE ? "LEAVE" : "NUDGE", heldMs, 1000, 35);
+  } else if (!patternEditActive && currentMode == MODE_NORMAL && btnCustom.isPressed &&
+             !btnDivisor.isPressed && !btnReset.isPressed && !customLongAlreadyHandled) {
+    // Solo Custom hold heading toward onCustomButtonLongHeldDuringPress()'s
+    // Analyzer toggle - shown only in MODE_NORMAL (entering), not
+    // MODE_ANALYZER (exiting uses renderAnalyzer()'s own screen instead,
+    // so this sweep can't reach it there). customLongAlreadyHandled
+    // guards against the same continuous press that just toggled us
+    // OUT of the analyzer immediately rendering as a "complete" entry
+    // sweep again - see the matching guard in renderAnalyzer().
+    uint32_t heldMs = millis() - btnCustom.pressStartMs;
+    drawHoldSweep("MIDI MONITOR", heldMs, LONGPRESS_MS, 35);
+  }
 
   u8g2.sendBuffer();
 }
@@ -1940,7 +3177,13 @@ void enterScreen(MenuScreen target);
 
 bool    menuExitRequested = false;
 bool    menuSaveOnExit    = true;
-bool    menuLeavingArmed  = false; // true once the top level has been held >=1s ("LEAVING MENU" blinks)
+// Same drawHoldSweep()-style sweep used everywhere else, reused here
+// too (see menuHoldSweepLabel/menuHoldSweepHeldMs, already shared with
+// Operation Setup) - menuHoldSweepTotalMs is this menu's own addition
+// since its top-level exit takes VERYLONG_MS (3s, since it also saves
+// and reboots) rather than the usual LONGPRESS_MS (1s) everywhere
+// else - see runSettingsMenu().
+uint32_t menuHoldSweepTotalMs = 1000;
 bool    menuWillRestart   = false; // true if the exit was triggered via the 3s threshold (-> restart)
 uint32_t menuDefaultsLoadedUntilMs = 0; // != 0 while "DEFAULTS LOADED" blinks on page 1
 
@@ -2037,7 +3280,7 @@ void renderHelpFooterSmall(int y, const char* const* lines, uint8_t count, uint8
   for (uint8_t i = 0; i < count; i++) {
     u8g2.drawStr(2, y + linePitch * (i + 1), lines[i]);
   }
-  u8g2.setFont(u8g2_font_6x10_tf); // restore - other code assumes this is the active font
+  u8g2.setFont(u8g2_font_5x7_tr); // restore - other code assumes this is the active font
 }
 
 // Unified menu grid, used consistently by every settings page: first
@@ -2045,9 +3288,11 @@ void renderHelpFooterSmall(int y, const char* const* lines, uint8_t count, uint8
 // MENU_FOOTER_GAP px below the last item, footer text lines
 // MENU_FOOTER_PITCH px apart (small 4x6 font). Kept identical across
 // every screen so the whole menu looks like one consistent design
-// instead of each page having its own spacing.
-const int MENU_Y0 = 20;
-const int MENU_STEP = 9;
+// instead of each page having its own spacing. Same values as
+// Operation Setup's SETUP_MENU_Y0/SETUP_MENU_STEP now that both use
+// the same u8g2_font_5x7_tr for their row text.
+const int MENU_Y0 = 18;
+const int MENU_STEP = 8;
 const int MENU_FOOTER_GAP = 5;
 const int MENU_FOOTER_PITCH = 7;
 
@@ -2161,7 +3406,7 @@ void renderResetSwitchScreen() {
 
 void renderMenu() {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setFont(u8g2_font_5x7_tr);
 
   if (menuScreen == SCR_TIMESIG_ENABLE) {
     u8g2.drawStr(2, 9, menuHeader(SCR_TIMESIG_ENABLE));
@@ -2171,6 +3416,10 @@ void renderMenu() {
       snprintf(line, sizeof(line), "[%s] %s", isTimeSigEnabled(i) ? "x" : " ", TIME_SIG_LABEL[i]);
       if (i == menuCursor) u8g2.drawStr(2, y, ">");
       u8g2.drawStr(12, y, line);
+    }
+    if (menuHoldSweepLabel != nullptr) {
+      u8g2.setFont(u8g2_font_5x7_tr);
+      drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, menuHoldSweepTotalMs, 35);
     }
     u8g2.sendBuffer();
     return;
@@ -2187,6 +3436,10 @@ void renderMenu() {
       snprintf(line, sizeof(line), "[%s]x%-3u", isDivisorEnabled(i) ? "x" : " ", DIVISOR_VALUES[i]);
       if (i == menuCursor) u8g2.drawStr(x, y, ">");
       u8g2.drawStr(x + 10, y, line);
+    }
+    if (menuHoldSweepLabel != nullptr) {
+      u8g2.setFont(u8g2_font_5x7_tr);
+      drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, menuHoldSweepTotalMs, 35);
     }
     u8g2.sendBuffer();
     return;
@@ -2205,6 +3458,10 @@ void renderMenu() {
     u8g2.drawStr(12, y1, line1);
     int footerY = MENU_Y0 + 2 * MENU_STEP + MENU_FOOTER_GAP;
     renderHelpFooterSmall(footerY, HELP_STANDBY, sizeof(HELP_STANDBY) / sizeof(HELP_STANDBY[0]), MENU_FOOTER_PITCH);
+    if (menuHoldSweepLabel != nullptr) {
+      u8g2.setFont(u8g2_font_5x7_tr);
+      drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, menuHoldSweepTotalMs, 35);
+    }
     u8g2.sendBuffer();
     return;
   }
@@ -2217,18 +3474,9 @@ void renderMenu() {
     u8g2.drawStr(12, y1, "YES");
     int footerY = MENU_Y0 + 2 * MENU_STEP + MENU_FOOTER_GAP;
     renderHelpFooterSmall(footerY, HELP_CONFIRM, sizeof(HELP_CONFIRM) / sizeof(HELP_CONFIRM[0]), MENU_FOOTER_PITCH);
-    u8g2.sendBuffer();
-    return;
-  }
-
-  if (menuScreen == SCR_TOP && menuLeavingArmed) {
-    // Blinking warning: reset is being held at the top level,
-    // upon reaching 3s total the menu is exited (+restart)
-    bool blinkOn = (millis() / 350) % 2 == 0;
-    if (blinkOn) {
-      const char* msg = "LEAVING MENU";
-      int w = u8g2.getStrWidth(msg);
-      u8g2.drawStr((128 - w) / 2, 36, msg);
+    if (menuHoldSweepLabel != nullptr) {
+      u8g2.setFont(u8g2_font_5x7_tr);
+      drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, menuHoldSweepTotalMs, 35);
     }
     u8g2.sendBuffer();
     return;
@@ -2254,6 +3502,10 @@ void renderMenu() {
     case SCR_SWITCH_RESET: renderResetSwitchScreen(); break;
     case SCR_DISPLAY:      renderValueList(SCR_DISPLAY, DISPLAY_NAMES, menuItemCount(SCR_DISPLAY), HELP_DISPLAY, sizeof(HELP_DISPLAY) / sizeof(HELP_DISPLAY[0])); break;
     default: break;
+  }
+  if (menuHoldSweepLabel != nullptr) {
+    u8g2.setFont(u8g2_font_5x7_tr);
+    drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, menuHoldSweepTotalMs, 35);
   }
   u8g2.sendBuffer();
 }
@@ -2395,7 +3647,6 @@ void runSettingsMenu() {
   customRoleCursorSaved = 0;
   menuExitRequested = false;
   menuSaveOnExit = true;
-  menuLeavingArmed = false;
   menuWillRestart = false;
   menuDefaultsLoadedUntilMs = 0;
 
@@ -2406,13 +3657,15 @@ void runSettingsMenu() {
   bool resetReleasedOnce = false;
 
   // Own state tracking for the reset button in the menu: short =
-  // value change, 1s = one level up (or at the top level: arm
-  // "LEAVING MENU"), 3s at the top level = save, exit and restart.
+  // value change, 1s = one level up, 3s at the top level = save, exit
+  // and restart (longer than the usual 1s elsewhere since this one
+  // also reboots the device - the sweep shown for it makes the
+  // difference obvious either way, see the sweep block below).
   bool     resetIsDown       = false;
   uint32_t resetPressStartMs = 0;
   bool     longActionHandled = false;
 
-  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setFont(u8g2_font_5x7_tr); // renderMenu() also sets this each frame - kept here for clarity, same convention as runOperationSetupMenu()
 
   while (!menuExitRequested) {
     updateButton(btnCustom, onMenuUp);
@@ -2433,17 +3686,10 @@ void runSettingsMenu() {
           // Not on page 1: holding 1s goes one level back
           if (heldMs >= LONGPRESS_MS) {
             goBack();
-            longActionHandled = true; // this press is "consumed" -
-            // continuing to hold doesn't also trigger
-            // "LEAVING MENU"; for that the button must be
-            // released and pressed again.
+            longActionHandled = true;
           }
         } else {
-          // Top level: 1s arms "LEAVING MENU",
-          // 3s total saves, exits, and restarts.
-          if (heldMs >= LONGPRESS_MS) {
-            menuLeavingArmed = true;
-          }
+          // Top level: holding 3s total saves, exits, and restarts.
           if (heldMs >= VERYLONG_MS) {
             longActionHandled  = true;
             menuSaveOnExit     = true;
@@ -2460,10 +3706,19 @@ void runSettingsMenu() {
           // enter sub-screen / toggle checkbox.
           onMenuChange(false);
         }
-        // Released before the 3s threshold was reached (but after
-        // 1s) -> "LEAVING MENU" is discarded again, no action.
-        menuLeavingArmed = false;
       }
+    }
+
+    // Same hold-to-confirm sweep used everywhere else (see
+    // drawHoldSweep()) - BACK on sub-screens (1s), or SAVE & RESTART
+    // at the top level (3s, since exiting here always means saving
+    // and rebooting, not just leaving).
+    menuHoldSweepLabel = nullptr;
+    if (resetReleasedOnce && rawReset && resetIsDown && !longActionHandled) {
+      bool atTop = (menuScreen == SCR_TOP);
+      menuHoldSweepLabel   = atTop ? "SAVE & RESTART" : "BACK";
+      menuHoldSweepHeldMs  = millis() - resetPressStartMs;
+      menuHoldSweepTotalMs = atTop ? VERYLONG_MS : LONGPRESS_MS;
     }
 
     renderMenu();
@@ -2507,6 +3762,447 @@ void runSettingsMenu() {
 }
 
 // ---------------------------------------------------------------------------
+// OPERATION SETUP SCREEN (Reset+Custom held together, from normal operation)
+// ---------------------------------------------------------------------------
+// Reachable any time during normal operation (unlike the main SETUP
+// tree above, which is boot-entry only) - lets you switch the play
+// view (see gridMode), set an End Bar (see endBarMode/endBarManualValue/endBarAction),
+// and manage Pattern Mode's markers.
+//
+//   OPERATION SETUP (top)
+//     GRID MODE     (CYCLE/SCROLL)
+//     SET MARKERS   N/500 - count of markers currently placed; hands
+//                       off to the live paint editor on the main
+//                       screen (see patternEditActive) rather than a
+//                       menu screen
+//     DELETE ALL MARKERS -> YES/NO confirm - only shown once there's
+//                       at least one marker to delete
+//     END BAR       OFF / LAST MARKER / MANUAL - mode only, a plain
+//                       toggle like GRID MODE (Reset short cycles
+//                       it, in that order) - see onSetupMenuChange()/
+//                       resolveEndBar()
+//     BAR NUMBER    the actual bar number for MANUAL (stepped in
+//                       groups of 4) - only shown while END BAR is
+//                       set to MANUAL; selecting/editing it works
+//                       like the old combined END BAR row used to:
+//                       Reset short opens it for editing (blinks),
+//                       Custom/Grid then step the value, Reset held
+//                       steps back to browsing - see endBarEditActive
+//     END BAR ACT   (LOOP/STOP/CONTINUE - see handleClock()) - only
+//                       shown once END BAR is set to something other
+//                       than OFF
+//
+// DELETE ALL MARKERS, BAR NUMBER, and END BAR ACT's visibility, and
+// which row ends up at which position, are all decided in exactly one
+// place - buildSetupTopRows() - so setupMenuItemCount()/
+// onSetupMenuChange()/renderOperationSetupMenu() can never disagree
+// about the layout.
+//
+// Navigation: Custom = up / Divisor = down while browsing; Reset short
+// = select/toggle - on END BAR that just cycles OFF -> LAST MARKER ->
+// MANUAL -> OFF directly, same as any other toggle row (e.g. GRID
+// MODE). On BAR NUMBER specifically, Reset short instead opens it for editing
+// (see endBarEditActive) - Custom/Grid then step its value (held,
+// with acceleration) instead of moving the cursor, and Reset held
+// steps back to browsing rather than leaving the screen, same idea
+// Pattern Mode's DEL hold uses. Reset held anywhere else goes back a
+// level (a no-op at bare TOP, since there's nothing to go back to
+// there); Custom+Reset held together (a fresh chord, not Reset
+// already down with Custom joining in) leaves Operation Setup
+// entirely after a 1s hold (see the LEAVE chord in
+// runOperationSetupMenu()), from any screen, not just TOP - same
+// combo that opened it in the first place (see loop()).
+// ---------------------------------------------------------------------------
+enum SetupMenuScreen { SETUPSCR_TOP, SETUPSCR_CONFIRM_DELETE_ALL };
+
+// Manual prototype - Arduino's ctags-based auto-prototype generator
+// doesn't reliably handle a custom enum as a parameter type (same
+// issue this file has hit before with other menu enums), producing a
+// broken forward declaration that leaves SetupMenuScreen undeclared at
+// the point it's needed. Declaring it explicitly here, right after the
+// enum itself, pre-empts that broken auto-generation.
+uint8_t setupMenuItemCount(SetupMenuScreen s);
+void    setupEnterScreen(SetupMenuScreen target);
+
+SetupMenuScreen setupMenuScreen     = SETUPSCR_TOP;
+uint8_t         setupMenuCursor     = 0;
+uint8_t         setupTopCursorSaved = 0;
+bool            setupExitRequested  = false; // set by onSetupMenuChange() to unwind runOperationSetupMenu() immediately (e.g. handing off to Pattern Mode's live paint editor)
+
+// True while the BAR NUMBER row is "opened" for editing (Reset short
+// on that row toggles this) - Custom/Grid step its value instead of
+// moving the cursor while this is active; Reset held then steps back
+// to browsing instead of leaving the screen, same idea the old
+// row-selected editing system used. See onSetupMenuChange()/
+// onSetupMenuUp()/onSetupMenuDown()/stepEndBar().
+bool endBarEditActive = false;
+
+// Same row layout as the main SETUP menu's MENU_Y0/MENU_STEP - both
+// use u8g2_font_5x7_tr (same font as the main screen's own footer
+// line) for a consistent look across every menu in the firmware.
+const int SETUP_MENU_Y0   = 18;
+const int SETUP_MENU_STEP = 8;
+
+// Builds the list of currently visible TOP rows into outRows (caller
+// provides a buffer sized SETUP_TOP_MAX_ROWS) and returns how many are
+// actually visible. DELETE ALL MARKERS only shows once there's at
+// least one marker to delete; BAR NUMBER only while END BAR is set to
+// MANUAL; END BAR ACT only once END BAR is set to something other
+// than OFF. Kept in exactly one place so setupMenuItemCount()/
+// onSetupMenuChange()/renderOperationSetupMenu() can never disagree
+// with each other about which row sits where.
+#define SETUP_TOP_MAX_ROWS 6
+enum SetupTopRow { ROW_GRID_MODE, ROW_SET_MARKERS, ROW_DELETE_ALL, ROW_END_BAR, ROW_END_BAR_NUMBER, ROW_END_BAR_ACT };
+
+// Manual prototype - same ctags workaround as setupMenuItemCount()/
+// setupEnterScreen() above, needed here too since this one takes a
+// pointer to the enum rather than the enum itself.
+uint8_t buildSetupTopRows(SetupTopRow* outRows);
+
+uint8_t buildSetupTopRows(SetupTopRow* outRows) {
+  uint8_t n = 0;
+  outRows[n++] = ROW_GRID_MODE;
+  outRows[n++] = ROW_SET_MARKERS;
+  if (patternMarkerCount > 0) outRows[n++] = ROW_DELETE_ALL;
+  outRows[n++] = ROW_END_BAR;
+  if (endBarMode == ENDBAR_MODE_MANUAL) outRows[n++] = ROW_END_BAR_NUMBER;
+  if (endBarMode != ENDBAR_MODE_OFF) outRows[n++] = ROW_END_BAR_ACT;
+  return n;
+}
+
+uint8_t setupMenuItemCount(SetupMenuScreen s) {
+  switch (s) {
+    case SETUPSCR_TOP: {
+      SetupTopRow rows[SETUP_TOP_MAX_ROWS];
+      return buildSetupTopRows(rows);
+    }
+    case SETUPSCR_CONFIRM_DELETE_ALL: return 2; // NO, YES
+  }
+  return 1;
+}
+
+void setupEnterScreen(SetupMenuScreen target) {
+  if (setupMenuScreen == SETUPSCR_TOP) setupTopCursorSaved = setupMenuCursor;
+  setupMenuScreen = target;
+  setupMenuCursor = 0;
+}
+
+void setupGoBack() {
+  switch (setupMenuScreen) {
+    case SETUPSCR_CONFIRM_DELETE_ALL:
+      setupMenuScreen = SETUPSCR_TOP;
+      setupMenuCursor = setupTopCursorSaved;
+      break;
+    default: break; // SETUPSCR_TOP has no parent - leaving is exclusively the Custom+Reset chord
+  }
+}
+
+// Nearest multiple of END_BAR_STEP at or below END_BAR_MAX - keeps
+// every manual value stepping produces a clean multiple of 4, rather
+// than landing on a lone non-multiple at the very top of the range.
+#define END_BAR_MANUAL_MAX 9996
+
+// Steps endBarManualValue by END_BAR_STEP (4), clamped to
+// [END_BAR_STEP, END_BAR_MANUAL_MAX] - the BAR NUMBER row's Custom/
+// Grid stepping while it's open for editing (see endBarEditActive).
+// Mode (OFF/LAST MARKER/MANUAL) is a separate, plain toggle on the
+// END BAR row itself now (see onSetupMenuChange()) - this only ever
+// runs while that mode is already MANUAL, since BAR NUMBER isn't
+// shown otherwise (see buildSetupTopRows()).
+void stepEndBar(int32_t delta) {
+  if (delta > 0) {
+    if (endBarManualValue < END_BAR_MANUAL_MAX) endBarManualValue += END_BAR_STEP;
+  } else if (delta < 0) {
+    if (endBarManualValue > END_BAR_STEP) endBarManualValue -= END_BAR_STEP;
+  }
+}
+
+void onSetupMenuUp(bool longPress) {
+  if (setupMenuScreen == SETUPSCR_TOP && endBarEditActive) { stepEndBar(+1); return; }
+  uint8_t count = setupMenuItemCount(setupMenuScreen);
+  setupMenuCursor = (setupMenuCursor + count - 1) % count;
+}
+void onSetupMenuDown(bool longPress) {
+  if (setupMenuScreen == SETUPSCR_TOP && endBarEditActive) { stepEndBar(-1); return; }
+  uint8_t count = setupMenuItemCount(setupMenuScreen);
+  setupMenuCursor = (setupMenuCursor + 1) % count;
+}
+
+void onSetupMenuChange() {
+  switch (setupMenuScreen) {
+    case SETUPSCR_TOP: {
+      SetupTopRow rows[SETUP_TOP_MAX_ROWS];
+      uint8_t rowCount = buildSetupTopRows(rows);
+      if (setupMenuCursor >= rowCount) break; // defensive - see buildSetupTopRows()
+      switch (rows[setupMenuCursor]) {
+        case ROW_GRID_MODE:
+          gridMode = (gridMode + 1) % GRIDMODE_COUNT;
+          if (gridMode == GRIDMODE_SCROLLING) {
+            divisorIndex = highestEnabledDivisorUpTo16(); // 16, or the next best of 8/4/2 if 16 isn't enabled
+          }
+          break;
+        case ROW_SET_MARKERS:
+          // Hands off to the live paint editor on the main screen
+          // instead of a menu screen (see patternEditActive) -
+          // requesting an exit here lets runOperationSetupMenu()'s own
+          // loop unwind normally.
+          patternEditActive    = true;
+          patternEditCursorBar = 1;
+          patternEditTool      = 0;
+          setupExitRequested   = true;
+          break;
+        case ROW_DELETE_ALL:
+          setupEnterScreen(SETUPSCR_CONFIRM_DELETE_ALL);
+          break;
+        case ROW_END_BAR:
+          // Cycle order: OFF -> LAST MARKER -> MANUAL -> OFF - not the
+          // enum's own declaration order (see EndBarMode), so the
+          // enum's numeric values (and anyone's already-saved
+          // endBarMode in NVS) stay meaningful across this change.
+          switch (endBarMode) {
+            case ENDBAR_MODE_OFF:         endBarMode = ENDBAR_MODE_LAST_MARKER; break;
+            case ENDBAR_MODE_LAST_MARKER: endBarMode = ENDBAR_MODE_MANUAL;      break;
+            case ENDBAR_MODE_MANUAL:      endBarMode = ENDBAR_MODE_OFF;         break;
+          }
+          break;
+        case ROW_END_BAR_NUMBER:
+          endBarEditActive = !endBarEditActive; // opens/closes editing for this row's Custom/Grid stepping
+          break;
+        case ROW_END_BAR_ACT:
+          endBarAction = (endBarAction + 1) % ENDBAR_ACTION_COUNT;
+          break;
+      }
+      break;
+    }
+    case SETUPSCR_CONFIRM_DELETE_ALL:
+      if (setupMenuCursor == 1) {
+        // YES - clear every marker.
+        memset(patternMarkers, 0, sizeof(patternMarkers));
+        patternMarkerCount = 0;
+        savePatternMarkers();
+      }
+      setupMenuScreen = SETUPSCR_TOP;
+      setupMenuCursor = setupTopCursorSaved;
+      break;
+  }
+}
+
+void renderOperationSetupMenu() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_5x7_tr);
+
+  switch (setupMenuScreen) {
+    case SETUPSCR_TOP: {
+      u8g2.drawStr(2, 9, "OPERATION SETUP");
+      char lineGridMode[22]; snprintf(lineGridMode, sizeof(lineGridMode), "%-11s %s", "GRID MODE", GRIDMODE_LABEL[gridMode]);
+      char lineSetMarkers[22]; snprintf(lineSetMarkers, sizeof(lineSetMarkers), "%-11s %u/%u", "SET MARKERS", patternMarkerCount, PATTERN_MARKER_COUNT);
+      char lineEndBar[24]; snprintf(lineEndBar, sizeof(lineEndBar), "%-11s %s", "END BAR", ENDBAR_MODE_LABEL[endBarMode]);
+      char lineEndBarNumber[22]; snprintf(lineEndBarNumber, sizeof(lineEndBarNumber), "%-11s %lu", "BAR NUMBER", (unsigned long)endBarManualValue);
+      char lineEndBarAct[24]; snprintf(lineEndBarAct, sizeof(lineEndBarAct), "%-11s %s", "END BAR ACT", ENDBAR_ACTION_LABEL[endBarAction]);
+
+      SetupTopRow rows[SETUP_TOP_MAX_ROWS];
+      uint8_t count = buildSetupTopRows(rows);
+      if (setupMenuCursor >= count) setupMenuCursor = count - 1; // defensive - see buildSetupTopRows()
+
+      bool editBlinkOn = (millis() / 300) % 2 == 0;
+      for (uint8_t i = 0; i < count; i++) {
+        int y = SETUP_MENU_Y0 + i * SETUP_MENU_STEP;
+        if (i == setupMenuCursor) u8g2.drawStr(2, y, ">");
+        const char* text;
+        switch (rows[i]) {
+          case ROW_GRID_MODE:      text = lineGridMode;      break;
+          case ROW_SET_MARKERS:    text = lineSetMarkers;    break;
+          case ROW_DELETE_ALL:     text = "DELETE ALL MARKERS"; break;
+          case ROW_END_BAR:        text = lineEndBar;        break;
+          case ROW_END_BAR_NUMBER: text = lineEndBarNumber;  break;
+          case ROW_END_BAR_ACT:    text = lineEndBarAct;     break;
+          default:                 text = "";                break;
+        }
+        if (rows[i] == ROW_END_BAR_NUMBER && endBarEditActive) {
+          drawBlinkableText(12, y, text, editBlinkOn);
+        } else {
+          u8g2.drawStr(12, y, text);
+        }
+      }
+      break;
+    }
+    case SETUPSCR_CONFIRM_DELETE_ALL: {
+      u8g2.drawStr(2, 9, "DELETE ALL MARKERS?");
+      const char* labels[2] = {"NO", "YES"};
+      for (uint8_t i = 0; i < 2; i++) {
+        int y = SETUP_MENU_Y0 + i * SETUP_MENU_STEP;
+        if (i == setupMenuCursor) u8g2.drawStr(2, y, ">");
+        u8g2.drawStr(12, y, labels[i]);
+      }
+      break;
+    }
+  }
+
+  if (menuHoldSweepLabel != nullptr) {
+    drawHoldSweep(menuHoldSweepLabel, menuHoldSweepHeldMs, LONGPRESS_MS, 35);
+  }
+
+  u8g2.sendBuffer();
+}
+
+// Blocking - MIDI clock ticks aren't processed while this is open
+// (same trade-off the main SETUP menu already makes). Any edit made
+// here takes effect immediately - there's no "confirm" step needed
+// for a menu this small.
+void runOperationSetupMenu() {
+  setupMenuScreen     = SETUPSCR_TOP;
+  setupMenuCursor     = 0;
+  setupTopCursorSaved = 0;
+  setupExitRequested  = false;
+  endBarEditActive    = false;
+
+  bool exitRequested = false;
+
+  // Custom is typically still physically held on entry (part of the
+  // Reset+Custom combo that opened this screen) - its first release
+  // must be swallowed without counting as a press, same idea as
+  // resetReleasedOnce below for Reset.
+  bool customReleasedOnce = false;
+  bool resetReleasedOnce  = false;
+
+  bool     resetIsDown       = false;
+  uint32_t resetPressStartMs = 0;
+  bool     longActionHandled = false;
+
+  u8g2.setFont(u8g2_font_5x7_tr); // renderOperationSetupMenu() also sets this each frame - kept here for clarity
+
+  while (!exitRequested) {
+    // --- Custom button (up) ---
+    bool rawCustomLevel = digitalRead(PIN_BTN_CUSTOM);
+    if (!customReleasedOnce) {
+      // NOTE: stableState mirrors digitalRead() directly (HIGH/LOW),
+      // same convention as everywhere else in this file - not an "is
+      // pressed" boolean, which is the opposite (LOW = pressed,
+      // pull-up wiring).
+      btnCustom.stableState  = rawCustomLevel;
+      btnCustom.isPressed    = (rawCustomLevel == LOW);
+      btnCustom.lastChangeMs = millis();
+      if (rawCustomLevel == HIGH) customReleasedOnce = true;
+    } else {
+      updateButton(btnCustom, onSetupMenuUp);
+    }
+
+    // --- Divisor button (down) ---
+    updateButton(btnDivisor, onSetupMenuDown);
+
+    // --- Reset button ---
+    bool rawReset = (digitalRead(PIN_BTN_RESET) == LOW);
+    if (!rawReset) resetReleasedOnce = true;
+
+    if (resetReleasedOnce) {
+      if (rawReset && !resetIsDown) {
+        resetIsDown       = true;
+        resetPressStartMs = millis();
+        longActionHandled = false;
+      } else if (rawReset && resetIsDown && !longActionHandled) {
+        if (millis() - resetPressStartMs >= LONGPRESS_MS) {
+          longActionHandled = true;
+          if (setupMenuScreen == SETUPSCR_TOP && endBarEditActive) {
+            endBarEditActive = false; // step back to browsing, not a full screen back
+          } else {
+            setupGoBack(); // no-op at bare TOP - leaving is exclusively the Custom+Reset chord below
+          }
+        }
+      } else if (!rawReset && resetIsDown) {
+        resetIsDown = false;
+        if (!longActionHandled) {
+          onSetupMenuChange();
+          if (setupExitRequested) exitRequested = true;
+        }
+      }
+    }
+
+    // LEAVE from anywhere: Custom+Reset held together (same chord that
+    // opened this menu in the first place - see loop()'s Operation Setup
+    // entry combo) exits the whole menu regardless of which screen
+    // it's on, not just from TOP. Same "close press-start timing"
+    // check as that outer combo, using the local press-time tracking
+    // already kept here for Custom/Reset - reused rather than
+    // duplicated state, since leaveComboHoldActive/leaveComboHoldStartMs
+    // are the same globals render()/drawHoldSweep() already read.
+    bool comboCustomDown = (rawCustomLevel == LOW);
+    int32_t comboDiff = (int32_t)(btnCustom.pressStartMs - resetPressStartMs);
+    if (comboDiff < 0) comboDiff = -comboDiff;
+    bool isLeaveChord = customReleasedOnce && resetReleasedOnce &&
+                        comboCustomDown && rawReset && comboDiff <= 400;
+    if (isLeaveChord) {
+      if (!leaveComboHoldActive) {
+        leaveComboHoldActive  = true;
+        leaveComboHoldStartMs = millis();
+      }
+      if (millis() - leaveComboHoldStartMs >= 1000) {
+        leaveComboHoldActive = false;
+        exitRequested = true; // full exit, whichever screen this was
+      }
+    } else {
+      leaveComboHoldActive = false;
+    }
+
+    // Sweep feedback: the LEAVE chord above takes priority when it's
+    // in progress; otherwise, the same sweep covers a plain Reset hold
+    // that means "go back a level" (or step out of BAR NUMBER editing) -
+    // except at bare TOP with nothing open, where that no longer does
+    // anything, so no sweep is shown for it there - see drawHoldSweep().
+    menuHoldSweepLabel = nullptr;
+    if (isLeaveChord && leaveComboHoldActive) {
+      menuHoldSweepLabel  = "LEAVE";
+      menuHoldSweepHeldMs = millis() - leaveComboHoldStartMs;
+    } else if (resetReleasedOnce && rawReset && resetIsDown && !longActionHandled) {
+      bool atBareTop = (setupMenuScreen == SETUPSCR_TOP && !endBarEditActive);
+      if (!atBareTop) {
+        menuHoldSweepLabel  = "BACK";
+        menuHoldSweepHeldMs = millis() - resetPressStartMs;
+      }
+    }
+
+    // Accelerating repeat while Custom/Grid is held during BAR NUMBER
+    // editing - same idea as Pattern Edit's fast-scroll, just stepping
+    // the value instead of paging bars: starts at +/-10 per 150ms,
+    // ramps to +/-100 per 150ms once held past 2s, so the full
+    // 0-9999 range stays reachable without an excessive wait. A short
+    // press's own single +/-1 step (via onSetupMenuUp/onSetupMenuDown
+    // above) already covers fine adjustment.
+    if (setupMenuScreen == SETUPSCR_TOP && endBarEditActive) {
+      static uint32_t endBarLastRepeatMs = 0;
+      bool customHeld  = btnCustom.isPressed  && (millis() - btnCustom.pressStartMs  >= 400);
+      bool divisorHeld = btnDivisor.isPressed && (millis() - btnDivisor.pressStartMs >= 400);
+      if ((customHeld || divisorHeld) && millis() - endBarLastRepeatMs >= 150) {
+        endBarLastRepeatMs = millis();
+        uint32_t heldMs = customHeld ? (millis() - btnCustom.pressStartMs) : (millis() - btnDivisor.pressStartMs);
+        int32_t step = (heldMs >= 2000) ? 100 : 10;
+        for (int32_t s = 0; s < step; s++) stepEndBar(customHeld ? +1 : -1);
+      }
+    }
+
+    renderOperationSetupMenu();
+    delay(30);
+  }
+
+  savePatternMarkers();
+
+  // Resync both buttons' debounce state with reality before returning
+  // to the outer loop() - Custom's own release was already consumed
+  // above for navigation, and Reset was only ever read raw here, so
+  // without this either could otherwise be misread as a fresh edge (or
+  // a stale still-pressed one) by the outer loop()'s own updateButton()
+  // calls right after this returns.
+  btnCustom.stableState = digitalRead(PIN_BTN_CUSTOM);
+  btnCustom.isPressed   = false;
+  btnDivisor.stableState = digitalRead(PIN_BTN_DIVISOR);
+  btnDivisor.isPressed   = false;
+  btnReset.stableState  = digitalRead(PIN_BTN_RESET);
+  btnReset.isPressed    = false;
+
+  u8g2.setContrast(settings.contrast);
+  u8g2.sendF("c", settings.invert ? 0xA7 : 0xA6);
+}
+
+// ---------------------------------------------------------------------------
 // SETUP
 // ---------------------------------------------------------------------------
 void setup() {
@@ -2529,6 +4225,7 @@ void setup() {
 
   // Load saved settings (time signature/divisor/contrast/invert/boot anim)
   loadSettings();
+  loadPatternMarkers();
 
   // Check whether the reset button is already held for 1s at power-on
   // -> then open the settings menu instead of a normal boot.
@@ -2761,11 +4458,17 @@ void loop() {
   updateButton(btnReset,   onResetButton);
 
   // Nudge mode: custom button+divisor simultaneously -> in and out
-  // (toggle, same combo). Uses the already-debounced stableState
+  // (toggle, same combo), now with the same 1s hold-to-confirm as the
+  // Operation Setup entry/exit combo below - see nudgeComboHoldActive and
+  // drawHoldSweep() in render(). Uses the already-debounced stableState
   // values of the buttons (same debouncing as normal time signature/
   // divisor selection). "armed" flag prevents a still-held combo
   // press from immediately counting as exit again - both buttons must
   // be fully released before the combo can trigger again ("press again").
+  // Disabled entirely while the Pattern Mode paint editor is active
+  // (patternEditActive) - Custom+Divisor there is already the
+  // instant, non-hold tool-cycle chord (see loop() further down), so
+  // this slower 1s-hold combo (and its sweep) must never also apply.
   static bool    nudgeComboArmed = true;
   static uint8_t nudgeSoloButton = 0; // 0=none, 1=custom, 2=divisor (currently held alone)
   {
@@ -2773,14 +4476,24 @@ void loop() {
     bool divDown   = (btnDivisor.stableState == LOW);
     bool comboNow  = customDown && divDown;
 
-    if (comboNow && nudgeComboArmed &&
-        (currentMode == MODE_NORMAL || currentMode == MODE_NUDGE)) {
-      currentMode = (currentMode == MODE_NORMAL) ? MODE_NUDGE : MODE_NORMAL;
-      if (currentMode == MODE_NUDGE) nudgeOffsetSixteenths = 0;
-      suppressCustomAction = true;
-      suppressDivisorAction = true;
-      nudgeComboArmed = false;
-      nudgeSoloButton = 0; // discard any ongoing solo detection
+    bool comboEligible = comboNow && nudgeComboArmed && !patternEditActive &&
+                         (currentMode == MODE_NORMAL || currentMode == MODE_NUDGE);
+    if (comboEligible) {
+      if (!nudgeComboHoldActive) {
+        nudgeComboHoldActive  = true;
+        nudgeComboHoldStartMs = millis();
+      }
+      if (millis() - nudgeComboHoldStartMs >= 1000) {
+        currentMode = (currentMode == MODE_NORMAL) ? MODE_NUDGE : MODE_NORMAL;
+        if (currentMode == MODE_NUDGE) nudgeOffsetSixteenths = 0;
+        suppressCustomAction = true;
+        suppressDivisorAction = true;
+        nudgeComboArmed = false;
+        nudgeComboHoldActive = false;
+        nudgeSoloButton = 0; // discard any ongoing solo detection
+      }
+    } else {
+      nudgeComboHoldActive = false;
     }
     if (!customDown && !divDown) {
       nudgeComboArmed = true; // both released -> combo armed again
@@ -2803,6 +4516,66 @@ void loop() {
       }
     } else {
       nudgeSoloButton = 0;
+    }
+  }
+
+  // Operation Setup entry / Pattern Edit exit: Custom+Reset held together
+  // (same idea as the Custom+Divisor combo above for Nudge, just a
+  // different button pair) - the same "armed" flag serves both
+  // directions, since only one of the two states can ever apply at
+  // once. "armed" prevents a still-held finger from re-triggering
+  // immediately on return; MODE_NORMAL guards entry (not exit) out of
+  // Analyzer/Nudge, same restriction the Nudge combo places on itself.
+  //
+  // Exiting the paint editor always lands back in OPERATION SETUP
+  // (not straight back to the live grid) - from there, the normal
+  // Reset-held-at-TOP-level exit takes you the rest of the way out.
+  //
+  // isSimultaneousChord matters specifically inside the paint editor:
+  // holding Reset while tapping Custom/Divisor to paint is now a
+  // normal, frequent interaction there (see onCustomButton()/
+  // onDivisorButton()), so "both down at once" alone can't mean exit -
+  // Reset is very often already held when Custom/Divisor joins in.
+  // Requiring the two presses to have actually started close together
+  // in time is what tells a genuine fresh chord apart from that.
+  //
+  // Once a genuine chord is detected, both buttons must then stay held
+  // for a further 1s (see leaveComboHoldActive) before anything
+  // actually happens - drawHoldSweep() shows a "LEAVE"/"MENU" sweep in
+  // render() for the duration, the same confirm-by-holding feedback
+  // used everywhere else a Reset hold means "leave" or "go back" (see
+  // runOperationSetupMenu() below).
+  static bool operationSetupComboArmed = true;
+  {
+    bool customDown = (btnCustom.stableState == LOW);
+    bool resetDown  = (btnReset.stableState == LOW);
+    bool isSimultaneousChord = isChordTiming(btnCustom.pressStartMs, btnReset.pressStartMs);
+    if (customDown && resetDown && operationSetupComboArmed && isSimultaneousChord) {
+      if (!leaveComboHoldActive) {
+        leaveComboHoldActive  = true;
+        leaveComboHoldStartMs = millis();
+      }
+      if (millis() - leaveComboHoldStartMs >= 1000) {
+        operationSetupComboArmed  = false;
+        leaveComboHoldActive = false;
+        if (patternEditActive) {
+          // Exit the live paint editor and persist the markers, then
+          // go straight into Operation Setup - runOperationSetupMenu()
+          // handles its own button-state resync when it eventually
+          // exits, so nothing needs to be suppressed here for the
+          // outer loop().
+          patternEditActive = false;
+          savePatternMarkers();
+          runOperationSetupMenu(); // lands on TOP, same as a fresh entry
+        } else if (currentMode == MODE_NORMAL) {
+          runOperationSetupMenu(); // blocking, see there
+        }
+      }
+    } else {
+      leaveComboHoldActive = false;
+    }
+    if (!customDown && !resetDown) {
+      operationSetupComboArmed = true;
     }
   }
 
@@ -2829,6 +4602,60 @@ void loop() {
     }
   } else {
     customLongAlreadyHandled = false;
+  }
+
+  // Pattern Mode marker editor fast-scroll: unlike the one-shot
+  // trigger above, these run every iteration for as long as the
+  // button stays held, so they can keep paging every
+  // PATTERN_EDIT_FAST_SCROLL_MS rather than firing once.
+  onCustomHeldDuringPress();
+  onDivisorHeldDuringPress();
+
+  // Pattern Mode paint-on-hold: the moment Reset goes down (not on
+  // release, and not tied to any navigation) immediately paints/erases
+  // the bar the cursor is already sitting on - so holding Reset and
+  // then moving continues painting from where you already are, rather
+  // than only starting once you move to a new bar. Edge-triggered via
+  // its own static, since btnReset.isPressed itself stays true for the
+  // whole hold and would otherwise repaint the same bar every
+  // iteration for no reason.
+  {
+    static bool resetWasPressedInPatternEdit = false;
+    if (patternEditActive && btnReset.isPressed && !resetWasPressedInPatternEdit) {
+      paintPatternMarkerAtCursor();
+    }
+    resetWasPressedInPatternEdit = patternEditActive && btnReset.isPressed;
+  }
+
+  // Pattern Mode tool-cycle: Custom+Divisor pressed together (the same
+  // "close press-start timing" chord concept as the Operation Setup entry/
+  // exit combo, just without a hold-to-confirm - selecting a tool is
+  // low-stakes, so it fires the instant the chord is recognized rather
+  // than requiring a sustained hold). Plain rotation - NONE... wait,
+  // there's no NONE anymore: SQUARE -> CIRCLE -> TRIANGLE -> X -> DEL ->
+  // SQUARE, straight through, DEL included like any other stop.
+  // suppressCustomAction/suppressDivisorAction stop each button's
+  // normal navigate action from also firing once the chord is
+  // released - without them, the cursor would move back then forward
+  // (or vice versa) right after every tool change.
+  static bool patternToolComboArmed = true;
+  if (patternEditActive) {
+    bool toolComboCustomDown  = (btnCustom.stableState == LOW);
+    bool toolComboDivisorDown = (btnDivisor.stableState == LOW);
+    int32_t toolComboDiff = (int32_t)(btnCustom.pressStartMs - btnDivisor.pressStartMs);
+    if (toolComboDiff < 0) toolComboDiff = -toolComboDiff;
+    bool isToolChord = toolComboCustomDown && toolComboDivisorDown && toolComboDiff <= 400;
+    if (isToolChord && patternToolComboArmed) {
+      patternToolComboArmed = false;
+      patternEditTool = (patternEditTool + 1) % 5;
+      suppressCustomAction  = true;
+      suppressDivisorAction = true;
+    }
+    if (!toolComboCustomDown && !toolComboDivisorDown) {
+      patternToolComboArmed = true;
+    }
+  } else {
+    patternToolComboArmed = true;
   }
 
   // Every button press also counts as "activity" and keeps standby

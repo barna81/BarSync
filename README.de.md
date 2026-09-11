@@ -16,12 +16,11 @@ einem 128×64-OLED-Display anzeigt.
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 06.09.2026)
+## Status (Stand 11.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.2.2  
-    Neue Funktionen: MIDI-Analyzer durch MIDI Monitor ersetzt (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph direkt am Gerät), Grid-Trennlinien alle 32 Bars (abschaltbar), Resttakte-Anzeige bei x128, BarSync-Logo im Bootscreen  
-    Sonstiges: Menüpunkt "Divisor"/"Divisor Select" final auf "Grid"/"Grid Select" umbenannt, neue Kontraststufen und Standardwerte
+- Aktueller FW Stand 1.3.0  
+    Neue Funktionen: Marker-Editor (eigene Marker im Bar-Grid setzen), zwei Grid-Darstellungsmodi (CYCLE/SCROLL), End Bar (Zählung bei einem definierten Takt loopen/stoppen/weiterlaufen lassen)
 - Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
 - Platinen zum selbst Bestücken sind angekommen
 - Ein passendes, 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)
@@ -53,6 +52,12 @@ BarSync unterstützt dich bei deiner Live-Performance. Während einer Show hast 
 - Bar-/Beat-Zähler, synchron zur eingehenden MIDI-Clock (24 PPQN)
 - Grid-Fortschrittsbalken (x1 bis x128 Bars), Grundfläche bleibt konstant,
   Kachelgröße passt sich an
+- Zwei Grid-Darstellungsmodi: CYCLE (wiederholender Zyklus) oder SCROLL
+  (fortlaufend, mit erkennbaren Markern)
+- Marker-Editor: eigene Marker im Bar-Grid setzen (4 Symbole) — für
+  Arrangement-Punkte, Phrasenanfänge oder Band-Cues
+- End Bar: Zählung bei einem definierten Takt automatisch loopen,
+  stoppen oder weiterlaufen lassen — fest oder am letzten gesetzten Marker
 - 5 wählbare Taktarten (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset-Taster: zwei Stufen (kurz = Taktende, mittel/halten = Zyklusende) — pro Stufe getrennt einstellbar, ob dabei auch die Spielzeit zurückgesetzt wird (Default: ja). Zusätzlich eine eigenständige "SET 1.1"-Funktion (Standardbelegung des Custom-Tasters) zum sofortigen Neusetzen des Beatmusters, quantisiert (auf den nächstgelegenen Beat gerundet) oder sofort (roher Tick) — im Einstellungsmenü wählbar
 - MIDI Monitor (Note/CC/PC/Pitch-Bend-Log, MIDI-Clock- und RUN/STOP-Graph) direkt am Gerät
