@@ -1,32 +1,32 @@
-<picture><source media="(prefers-color-scheme: dark)" srcset="images/BarSync_logo_white.svg"><source media="(prefers-color-scheme: light)" srcset="images/BarSync_logo.svg"><img align="left" alt="BarSync Logo" src="images/BarSync_logo.svg" width="30%"></picture>
-<p align="right">
-<b>MIDI Clock Bar Counter</b><br/>
-<sub><i>-Always in Time.-</i></sub>
-</p>
-<br clear="left"/>
+![BarSync Logo](https://github.com/barna81/BarSync/raw/main/images/BarSync_logo.svg)
 
+**MIDI Clock Bar Counter**
+*-Always in Time.-*
 
-*[Deutsche Version](README.de.md)*
-
+*[Deutsche Version](https://github.com/barna81/BarSync/blob/main/README.de.md)*
 
 BarSync is an ESP32-based device that receives an incoming MIDI clock and
 displays bar position, beat progress, tempo, and elapsed play time on a
 128×64 OLED display.
 
-![BarSync](images/barsync_pic2.jpeg)
+[![BarSync](https://github.com/barna81/BarSync/raw/main/images/barsync_pic2.jpeg)](/barna81/BarSync/blob/main/images/barsync_pic2.jpeg)
 
-
-## Status (as of 2026-09-11)
+## Status (as of 2026-09-16)
 
 BarSync - Desktop version (this device)
-- Current firmware: 1.3.0  
-    New features: Marker Editor (place your own markers on the bar grid), two grid display modes (CYCLE/SCROLL), End Bar (loop/stop/continue the count at a defined bar)
+
+- Current firmware: 1.3.1
+Improvements: SCROLL mode with a much clearer sense of motion (stripe
+pattern + marker halo), extended bar/playtime counter limits, grid
+counter/BPM detection now keep running seamlessly in the background,
+various button-combo bug fixes
 - Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested
 - PCBs for self-assembly have arrived
-- A matching 3D-printable enclosure is available here [`enclosure`](enclosure/)
+- A matching 3D-printable enclosure is available here [`enclosure`](https://github.com/barna81/BarSync/blob/main/enclosure)
 - A solder-it-yourself kit is being considered, depending on interest
 
 BarSync - Eurorack version (in development, not yet on GitHub)
+
 - Code finished
 - PCB layout finished and ordered
 - Schematic and PCB layout to follow
@@ -34,11 +34,10 @@ BarSync - Eurorack version (in development, not yet on GitHub)
 
 *(Interested in the kit or the Eurorack version? Open an issue in this repo or get in touch.)*
 
-
 ---
 
-
 ## What is this?
+
 Never miss the drop...
 
 BarSync keeps you locked into your track's arrangement — live or in the studio. Know exactly where you stand in the bar count, so drops, breaks and builds never catch you off guard.
@@ -46,18 +45,17 @@ BarSync keeps you locked into your track's arrangement — live or in the studio
 Since I couldn't find anything similar on the market or in the DIY scene, I built BarSync.
 BarSync supports you during your live performance. During a show your hands are usually full, and it's easy to lose track of the timing. No more counting bars in your head to land the drop at the right moment: BarSync counts and visualizes the bars elapsed since a starting point you define yourself. That starting point can be the first MIDI clock signal from your sequencer, or you can reset it at any time with the reset button. This way you always know exactly which bar you're in. The visualization adapts to your needs (1-128 bars can be displayed).
 
-
 ## Features
 
 - Bar/beat counter, synced to the incoming MIDI clock (24 PPQN)
 - Grid progress bar (x1 to x128 bars) — overall area stays constant,
-  tile size adapts accordingly
+tile size adapts accordingly
 - Two grid display modes: CYCLE (repeating cycle) or SCROLL
-  (continuous, with markers scrolling into view)
+(continuous, with markers scrolling into view)
 - Marker Editor: place your own markers on the bar grid (4 symbols) —
-  for arrangement points, phrase starts, or band cues
+for arrangement points, phrase starts, or band cues
 - End Bar: automatically loop, stop, or continue the count at a
-  defined bar — fixed, or at your last placed marker
+defined bar — fixed, or at your last placed marker
 - 5 selectable time signatures (2/4, 3/4, 4/4, 5/4, 7/8)
 - Reset button: two stages (short = bar end, medium/hold = cycle end) — each independently configurable whether it also resets the elapsed play time (default: yes). Plus a standalone "SET 1.1" function (default custom-button role) to instantly re-anchor the beat pattern, either quantized (rounded to the nearest beat) or instant (raw tick) — selectable in the settings menu
 - MIDI Monitor (Note/CC/PC/Pitch Bend log, MIDI clock and RUN/STOP graph) right on the device
@@ -66,51 +64,45 @@ BarSync supports you during your live performance. During a show your hands are 
 - Standby (light sleep) on MIDI inactivity
 - On-device settings menu (no app or software required)
 
-
 ## Operation
 
-Quick overview — full guide in
-[`docs/BarSync_Quickstart_EN.pdf`](docs/BarSync_Quickstart_EN.pdf):
+Quick overview — full guide in [`docs/BarSync_Quickstart_EN.pdf`](https://github.com/barna81/BarSync/blob/main/docs/BarSync_Quickstart_EN.pdf):
 
-| Button | Function |
-|---|---|
-| Custom button (short) | SET 1.1 (re-anchor beat pattern)* |
-| Custom button (hold 1s) | Toggle MIDI Monitor** |
-| Grid (short) | Change the number of bars shown in the grid (x1–x128) |
-| Reset (short/medium) | Reset stage 1/2 |
-| Custom button + Grid together | Toggle nudge mode |
-| Hold Reset 1s at boot | Settings menu |
+| Button                        | Function                                              |
+| ----------------------------- | ----------------------------------------------------- |
+| Custom button (short)         | SET 1.1 (re-anchor beat pattern)\*                    |
+| Custom button (hold 1s)       | Toggle MIDI Monitor\*\*                               |
+| Grid (short)                  | Change the number of bars shown in the grid (x1–x128) |
+| Reset (short/medium)          | Reset stage 1/2                                       |
+| Custom button + Grid together | Toggle nudge mode                                     |
+| Hold Reset 1s at boot         | Settings menu                                         |
 
-*Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)  
+*Configurable in setup: custom button for cycling through the time signatures, or SET1.1 (default)
 **In the MIDI Monitor screen, the reset button clears the Note/CC log instead of triggering its normal reset function.
 
 ---
 
-
 ## Cool! How do I get one?
 
-If you'd like to build the device yourself, see [LICENSE](LICENSE) — you'll find the corresponding firmware, schematic, and parts list here. I've also designed a PCB, whose layout is included as well. Since it's a fairly simple layout, you can also use perfboard or even a breadboard to build BarSync. Basic knowledge of the ESP32, a soldering iron, and general electronics will be helpful.
+If you'd like to build the device yourself, see [LICENSE](https://github.com/barna81/BarSync/blob/main/LICENSE) — you'll find the corresponding firmware, schematic, and parts list here. I've also designed a PCB, whose layout is included as well. Since it's a fairly simple layout, you can also use perfboard or even a breadboard to build BarSync. Basic knowledge of the ESP32, a soldering iron, and general electronics will be helpful.
 
 In short: the project is currently still in a full DIY stage. Depending on interest, I'm considering offering a BarSync kit. It would come with a 3D-printed enclosure, a PCB, and all the necessary electronic components ready to be assembled. All that would be left to do is soldering and flashing the ESP32.
 
 ## Building Your Own
 
-- Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
-- PCB layout, and Gerber files are in [`hardware/`](hardware/)  
-- Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)  
-- Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)  
-- 3D-printable enclosure available here: [`enclosure`](enclosure/)
+- Full [`schematic`](https://github.com/barna81/BarSync/blob/main/hardware/kicad/BarSync/BarSync_schematic.pdf)
+- PCB layout, and Gerber files are in [`hardware/`](https://github.com/barna81/BarSync/blob/main/hardware)
+- Full bill of materials: [`hardware/BarSync_BOM.en.md`](https://github.com/barna81/BarSync/blob/main/hardware/BarSync_BOM.en.md)
+- Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](https://github.com/barna81/BarSync/blob/main/hardware/BarSync_Aufbauanleitung.en.md)
+- 3D-printable enclosure available here: [`enclosure`](https://github.com/barna81/BarSync/blob/main/enclosure)
 
-<p align="center">
-<img src="images/BarSync_CAD-b.png" alt="BarSync_CAD" width="1000">
-</p>
+[![BarSync_CAD](https://github.com/barna81/BarSync/raw/main/images/BarSync_CAD-b.png)](/barna81/BarSync/blob/main/images/BarSync_CAD-b.png)
 
 ## What´s inside?
-First build with the new PCB!  
 
-<p align="center">
-<img src="images/BarSync_inside.jpeg" alt="BarSync_inside" width="1000">
-</p>
+First build with the new PCB!
+
+[![BarSync_inside](https://github.com/barna81/BarSync/raw/main/images/BarSync_inside.jpeg)](/barna81/BarSync/blob/main/images/BarSync_inside.jpeg)
 
 ## Key Hardware
 
@@ -118,24 +110,21 @@ First build with the new PCB!
 - SSD1309 OLED, 2.42", 128×64, SPI
 - 3 buttons (custom, grid, reset)
 
-
 ## Flashing the Firmware
 
 1. Install the Arduino IDE, add ESP32 board support
 2. Install libraries: **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
-3. Open [`firmware/barsync.ino`](firmware/barsync.ino), select board "ESP32 Dev Module", upload
-
+3. Open [`firmware/barsync.ino`](https://github.com/barna81/BarSync/blob/main/firmware/barsync.ino), select board "ESP32 Dev Module", upload
 
 ## License
 
-This project is licensed under **CC BY-NC-SA 4.0** — see [LICENSE](LICENSE).
+This project is licensed under **CC BY-NC-SA 4.0** — see [LICENSE](https://github.com/barna81/BarSync/blob/main/LICENSE).
 Free to use, modify, and share for **non-commercial** purposes, with
 attribution and share-alike terms. For commercial use, please get in touch.
 
 ---
 
-
-*[Deutsche Version](README.de.md)*
+*[Deutsche Version](https://github.com/barna81/BarSync/blob/main/README.de.md)*
 
 *Built with a lot of debugging, deep MIDI timing analysis, and an
 occasional detour into building a Space Invaders clone.*
