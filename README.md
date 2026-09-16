@@ -16,7 +16,7 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (as of 2026-09-11)
+## Status (as of 2026-09-16)
 
 BarSync - Desktop version (this device) 
 - Current firmware: 1.3.1  
