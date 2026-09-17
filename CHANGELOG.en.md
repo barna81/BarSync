@@ -2,6 +2,32 @@
 
 *[Deutsche Version](https://github.com/barna81/BarSync/blob/main/CHANGELOG.md)*
 
+## Hardware Rev. 1.2 (2026-09-17)
+
+**D1 rewired from a series diode to an antiparallel protection diode.**
+D1 (1N4148) previously sat in series in the MIDI input path (documented
+as a "series-resistor diode"); it's now wired in reverse-parallel
+across the input LED of optocoupler U1 (6N139) — D1's anode ties to the
+net at U1 pin 3 (opto-LED cathode), D1's cathode ties to the net at U1
+pin 2 (opto-LED anode, via R1/220Ω). In normal operation D1 now blocks
+completely and only conducts on a reversed or negative voltage spike at
+the MIDI input, clamping it to protect the opto-LED from exceeding its
+reverse breakdown voltage — without the extra forward voltage drop the
+previous series arrangement added to the signal path.
+
+D1 was also physically relocated on the PCB (new footprint position),
+and several GND traces around U1 had their width adjusted to route the
+new wiring cleanly; gerber files were re-exported accordingly.
+
+Affects: `hardware/kicad/BarSync/BarSync.kicad_sch`,
+`BarSync.kicad_pcb`, `BarSync.net`, `hardware/kicad/BarSync/gerbers/*`.
+The separate `BarSync_Thru4.kicad_sch` (4-way MIDI-thru variant, still
+in progress) is unaffected by this change and is not part of this
+release. D1's BOM description ("MIDI-IN series-resistor diode") was
+outdated after this change and has now been updated.
+
+---
+
 ## Firmware v1.3.1 (2026-09-16)
 
 **Extended playtime and bar counter limits.** The playtime display now

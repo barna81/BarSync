@@ -14,7 +14,7 @@ und jede Netzverbindung einzeln verifiziert).
 |---|---|---|---|---|---|
 | U1 | 6N139 | — | 1 | DIP-8, **Sockel** | Optokoppler, MIDI-IN |
 | U2 | SN7406N | — | 1 | DIP-14, **Sockel** | Hex-Inverter, 2 Gates in Reihe für MIDI-Thru |
-| D1 | 1N4148 | — | 1 | DO-35, liegend | MIDI-IN Vorwiderstand-Diode |
+| D1 | 1N4148 | — | 1 | DO-35, liegend | MIDI-IN Schutzdiode (antiparallel zu U1, Verpolungs-/Spannungsspitzenschutz) |
 | R1 | Widerstand | 220Ω, 1/4W | 1 | Axial, liegend | MIDI-IN Vorwiderstand |
 | R2 | Widerstand | 4,7kΩ, 1/4W | 1 | Axial, liegend | Vb-Ableitwiderstand (6N139) |
 | R3 | Widerstand | 220Ω, 1/4W | 1 | Axial, liegend | Pull-up Optokoppler-Ausgang → **+3V3** (nicht +5V — geht direkt auf ESP32 GPIO15!) |

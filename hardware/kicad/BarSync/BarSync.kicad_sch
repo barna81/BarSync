@@ -6,7 +6,7 @@
 	(paper "A4")
 	(title_block
 		(title "BarSync - MIDI Clock Bar Counter & Visualizer")
-		(date "2026-09-02")
+		(date "2026-09-17")
 		(rev "1.2")
 	)
 	(lib_symbols
@@ -2894,7 +2894,7 @@
 	)
 	(arc
 		(start 24.6252 105.4228)
-		(mid 25.1459 106.68)
+		(mid 25.1465 106.68)
 		(end 24.6252 107.9372)
 		(stroke
 			(width 0)
@@ -3338,6 +3338,12 @@
 		(uuid "76bc9573-491d-49c9-8092-d40c3d7fa673")
 	)
 	(junction
+		(at 76.2 77.47)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "7fa7cfe5-39a1-4982-84cb-2b6168336799")
+	)
+	(junction
 		(at 100.33 88.9)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3373,6 +3379,22 @@
 		(color 0 0 0 0)
 		(uuid "d9c69cd9-fde1-4131-ab61-b7e329c1c4b6")
 	)
+	(junction
+		(at 76.2 69.85)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "fb0309aa-0c02-46e5-b0ea-64c5d7d5a00f")
+	)
+	(wire
+		(pts
+			(xy 55.88 77.47) (xy 55.88 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0014de0a-051b-4e3d-8220-c7708a60cf09")
+	)
 	(wire
 		(pts
 			(xy 101.6 107.95) (xy 101.6 113.03)
@@ -3402,6 +3424,16 @@
 			(type default)
 		)
 		(uuid "055dc12a-a45a-47b1-b4ea-66010263fe86")
+	)
+	(wire
+		(pts
+			(xy 80.01 77.47) (xy 76.2 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "059fc50c-1f25-4f82-81d7-731d4a2430c7")
 	)
 	(wire
 		(pts
@@ -3563,16 +3595,6 @@
 		)
 		(uuid "1d3c7912-ad2b-44e8-9e45-f03ac5eb2de7")
 	)
-	(wire
-		(pts
-			(xy 50.8 74.93) (xy 85.09 74.93)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1eecea4f-0dca-4541-9b28-0072eca8f283")
-	)
 	(polyline
 		(pts
 			(xy 37.084 72.39) (xy 37.084 71.12)
@@ -3695,6 +3717,16 @@
 	)
 	(wire
 		(pts
+			(xy 55.88 77.47) (xy 76.2 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3569f78b-b17d-4868-8d78-29141a5b85ef")
+	)
+	(wire
+		(pts
 			(xy 78.74 102.87) (xy 78.74 105.41)
 		)
 		(stroke
@@ -3745,7 +3777,7 @@
 	)
 	(wire
 		(pts
-			(xy 50.8 72.39) (xy 60.96 72.39)
+			(xy 55.88 69.85) (xy 60.96 69.85)
 		)
 		(stroke
 			(width 0)
@@ -4005,6 +4037,16 @@
 	)
 	(wire
 		(pts
+			(xy 55.88 72.39) (xy 50.8 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7620d414-5612-4a61-a60f-9805aecad7f3")
+	)
+	(wire
+		(pts
 			(xy 113.03 100.33) (xy 100.33 100.33)
 		)
 		(stroke
@@ -4085,6 +4127,16 @@
 	)
 	(wire
 		(pts
+			(xy 55.88 69.85) (xy 55.88 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "95022ee2-c0ca-4746-985c-53feda6fb26f")
+	)
+	(wire
+		(pts
 			(xy 220.98 95.25) (xy 250.19 95.25)
 		)
 		(stroke
@@ -4115,7 +4167,7 @@
 	)
 	(wire
 		(pts
-			(xy 68.58 72.39) (xy 72.39 72.39)
+			(xy 68.58 69.85) (xy 76.2 69.85)
 		)
 		(stroke
 			(width 0)
@@ -4172,6 +4224,16 @@
 			(type default)
 		)
 		(uuid "9ebae2fa-48eb-4fc8-a655-46a79fd47516")
+	)
+	(wire
+		(pts
+			(xy 85.09 74.93) (xy 80.01 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9ec45d78-4df1-4743-a4b0-990f3cce71ca")
 	)
 	(wire
 		(pts
@@ -4392,6 +4454,36 @@
 			(type default)
 		)
 		(uuid "c8c1a1bd-a5c2-4e10-9739-6c6ec361cf2d")
+	)
+	(wire
+		(pts
+			(xy 55.88 74.93) (xy 50.8 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "cb5317f9-e9bc-4f42-82b4-1a0b63f88bc4")
+	)
+	(wire
+		(pts
+			(xy 76.2 69.85) (xy 80.01 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ce5fe48f-f812-41b4-8ded-0906d1c6c007")
+	)
+	(wire
+		(pts
+			(xy 80.01 72.39) (xy 80.01 69.85)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d1a0cd60-abed-42c7-84b3-d2ab9d7891fc")
 	)
 	(wire
 		(pts
@@ -4662,6 +4754,16 @@
 			(type default)
 		)
 		(uuid "fa9f0b5f-b3f5-4d25-bc69-227c94dac824")
+	)
+	(wire
+		(pts
+			(xy 80.01 74.93) (xy 80.01 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fb308b5d-81f1-423b-91a9-bd1f36ef1371")
 	)
 	(wire
 		(pts
@@ -4937,7 +5039,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "MIDI-THRU"
+		(property "Value" "MIDI-THRU 1"
 			(at 55.88 99.568 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5161,7 +5263,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 64.77 72.39 90)
+		(at 64.77 69.85 90)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5172,7 +5274,7 @@
 		(fields_autoplaced yes)
 		(uuid "725c5a53-231c-490e-a784-90613c786ccd")
 		(property "Reference" "R1"
-			(at 64.77 66.04 90)
+			(at 64.77 63.5 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5182,7 +5284,7 @@
 			)
 		)
 		(property "Value" "220"
-			(at 64.77 68.58 90)
+			(at 64.77 66.04 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5192,7 +5294,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
-			(at 64.77 74.168 90)
+			(at 64.77 71.628 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5203,7 +5305,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 64.77 72.39 0)
+			(at 64.77 69.85 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5214,7 +5316,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 64.77 72.39 0)
+			(at 64.77 69.85 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -6265,6 +6367,109 @@
 		)
 	)
 	(symbol
+		(lib_id "Diode:1N4148")
+		(at 76.2 73.66 270)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "e89eb764-e6f9-486c-924c-b96ae9feeb54")
+		(property "Reference" "D1"
+			(at 75.184 63.5 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "1N4148"
+			(at 72.644 65.786 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+			(at 76.2 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf"
+			(at 76.2 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "100V 0.15A standard switching diode, DO-35"
+			(at 76.2 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 76.2 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 76.2 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "716ee976-e3c7-4d4c-af39-be68d14ebeec")
+		)
+		(pin "2"
+			(uuid "1a13fc2f-8b17-423d-b842-a004d0b5e98a")
+		)
+		(instances
+			(project "BarSync"
+				(path "/e6acef4a-d614-4cf7-b6bf-e8ed4f7058f0"
+					(reference "D1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R")
 		(at 152.4 66.04 180)
 		(unit 1)
@@ -6439,108 +6644,6 @@
 			(project "BarSync"
 				(path "/e6acef4a-d614-4cf7-b6bf-e8ed4f7058f0"
 					(reference "U1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Diode:1N4148")
-		(at 76.2 72.39 180)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "f35528a2-de5f-4f99-9099-012cb66d62df")
-		(property "Reference" "D1"
-			(at 76.2 66.04 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "1N4148"
-			(at 76.2 68.58 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
-			(at 76.2 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf"
-			(at 76.2 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "100V 0.15A standard switching diode, DO-35"
-			(at 76.2 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sim.Device" "D"
-			(at 76.2 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Sim.Pins" "1=K 2=A"
-			(at 76.2 72.39 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "db7591b7-9d50-4eb0-8743-d4fb12130697")
-		)
-		(pin "2"
-			(uuid "9b089947-149e-48d3-ba75-dd9ebe606a43")
-		)
-		(instances
-			(project "BarSync"
-				(path "/e6acef4a-d614-4cf7-b6bf-e8ed4f7058f0"
-					(reference "D1")
 					(unit 1)
 				)
 			)

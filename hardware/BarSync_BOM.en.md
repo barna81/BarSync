@@ -14,7 +14,7 @@ every footprint, and every net connection individually verified).
 |---|---|---|---|---|---|
 | U1 | 6N139 | — | 1 | DIP-8, **socketed** | Optocoupler, MIDI-IN | 
 | U2 | SN7406N | — | 1 | DIP-14, **socketed** | Hex inverter, 2 gates in series for MIDI-Thru |
-| D1 | 1N4148 | — | 1 | DO-35, horizontal | MIDI-IN series diode |
+| D1 | 1N4148 | — | 1 | DO-35, horizontal | MIDI-IN protection diode (antiparallel to U1, reverse/spike protection) |
 | R1 | Resistor | 220Ω, 1/4W | 1 | Axial, horizontal | MIDI-IN series resistor |
 | R2 | Resistor | 4.7kΩ, 1/4W | 1 | Axial, horizontal | Vb bias resistor (6N139) |
 | R3 | Resistor | 220Ω, 1/4W | 1 | Axial, horizontal | Pull-up, optocoupler output → **+3V3** (not +5V — feeds ESP32 GPIO15 directly!) |

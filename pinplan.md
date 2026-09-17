@@ -48,50 +48,33 @@ steckbar.
 |----------------------------------|-----------|------|
 | MIDI-Daten (Optokoppler-Ausgang) | GPIO15 (RX2) | 15 |
 
-**Beschaltung der Optokoppler-Stufe (6N139):**
+MIDI-IN (DIN-5) → 220Ω-Vorwiderstand (R1) → Eingangs-LED von U1 (6N139,
+Pin 2/3). D1 (1N4148) liegt **antiparallel** zur Eingangs-LED und schützt
+sie vor Verpolung/negativen Spannungsspitzen — leitet im Normalbetrieb
+nicht mit. Ausgangsseite: Vb (Pin 7) über 4,7–10kΩ (R2) nach GND, Ausgang
+(Pin 6) über 220Ω-Pull-up (R3) nach +3V3 → ESP32 GPIO15. Gemeinsame Masse
+zwingend auf der Ausgangsseite (ESP32, Display, U1 Pin 5) — die
+MIDI-Eingangsseite bleibt durch den Optokoppler galvanisch getrennt.
 
-```
-MIDI-IN (DIN-5, Pin 4) ──[220Ω]──►│ (1N4148, Durchlassrichtung) ──► 6N139 Pin 2 (Anode)
-MIDI-IN (DIN-5, Pin 5) ─────────────────────────────────────────► 6N139 Pin 3 (Kathode)
-                                                                    │
-                                                    6N139 Pin 8 (Vcc) ── +5V
-                                                    6N139 Pin 7 (Vb)  ── über 4,7–10kΩ nach GND
-                                                    6N139 Pin 6 (Ausgang) ── über 220Ω Pull-up nach +3V3
-                                                                          └──► ESP32 GPIO15 (RX2)
-                                                    6N139 Pin 5 (GND) ── GND (ESP32-Seite)
-```
+Vollständige Beschaltung: [Schaltplan](hardware/kicad/BarSync/BarSync_schematic.pdf),
+Bauteile: [`BarSync_BOM.md`](hardware/BarSync_BOM.md).
 
-- DIN-5 Pin 2 = Schirm/nicht verbunden (je nach Buchse)
-- Die 5V für den Optokoppler können separat oder vom ESP32-VIN kommen,
-  je nach Stromversorgung — GND muss in jedem Fall gemeinsam sein.
-- Der Basis-Widerstand an Pin 7 (Vb) ist wichtig für saubere, schnelle
-  Flanken bei MIDI-Clock (24 PPQN) — ohne ihn können Clock-Ticks verloren
-  gehen oder Stop-Nachrichten fehlerhaft interpretiert werden.
+> Der Basiswiderstand an Pin 7 (Vb) ist wichtig für saubere, schnelle
+> Flanken bei MIDI-Clock (24 PPQN) — ohne ihn können Clock-Ticks verloren
+> gehen oder Stop-Nachrichten fehlerhaft interpretiert werden.
 
 ---
 
 ## 3. MIDI-THRU (gepufferte Weiterleitung, 7406/74LS05)
 
-**Bauteile:**
-- 1× 7406 oder 74LS05 (Hex-Inverter, Open-Kollektor-Ausgang)
-- 1× DIN-5-Buchse (zusätzlich, für Thru)
-- 1× 220Ω-Widerstand (Pull-up für die neue Thru-Stromschleife)
-- 1× DIP-14-Sockel (empfohlen)
+U1 Pin 6 (Optokoppler-Ausgang, = derselbe Knoten wie GPIO15) speist einen
+Gate-Eingang von U2 (7406/74LS05, Hex-Inverter mit Open-Kollektor-Ausgang);
+dessen Ausgang treibt über einen 220Ω-Pull-up (R4, nach +5V) die
+THRU-Buchse (Pin 5 Signal, Pin 4 Pull-up, Pin 2 nicht verbunden).
+Ungenutzte Gates (5 von 6) bleiben offen oder auf GND (Datenblatt-
+Empfehlung beachten). Belegt keinen ESP32-Pin.
 
-**Beschaltung:**
-
-```
-6N139 Pin 6 (Ausgang, = derselbe Knoten wie GPIO15) ──► 7406 Eingang (z.B. Pin 1)
-                                                          │
-                                                    7406 Ausgang (Pin 2, Open-Kollektor)
-                                                          │
-                                     ──────────────────────────────────► THRU-Buchse Pin 5
-+5V ──[220Ω]──────────────────────────────────────────────────────────► THRU-Buchse Pin 4
-                                                    THRU-Buchse Pin 2 ── nicht verbunden
-```
-
-- Nicht genutzte Gates des 7406 (5 von 6 bleiben frei) können offen
-  bleiben oder auf GND gelegt werden (Datenblatt-Empfehlung beachten)
+Vollständige Beschaltung: [Schaltplan](hardware/kicad/BarSync/BarSync_schematic.pdf).
 
 ---
 

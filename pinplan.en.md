@@ -46,51 +46,33 @@ on the display itself — both ends simply plug in.
 |----------------------------------|-----------|------|
 | MIDI data (optocoupler output)  | GPIO15 (RX2) | 15 |
 
-**Wiring of the optocoupler stage (6N139):**
+MIDI-IN (DIN-5) → 220Ω series resistor (R1) → input LED of U1 (6N139,
+pin 2/3). D1 (1N4148) is wired **antiparallel** to the input LED and
+protects it against reverse polarity/negative voltage spikes — it
+doesn't conduct in normal operation. Output side: Vb (pin 7) via
+4.7–10kΩ (R2) to GND, output (pin 6) via a 220Ω pull-up (R3) to +3V3 →
+ESP32 GPIO15. Common ground is required on the output side (ESP32,
+display, U1 pin 5) — the MIDI input side stays galvanically isolated by
+the optocoupler.
 
-```
-MIDI-IN (DIN-5, Pin 4) ──[220Ω]──►│ (1N4148, forward direction) ──► 6N139 Pin 2 (Anode)
-MIDI-IN (DIN-5, Pin 5) ─────────────────────────────────────────► 6N139 Pin 3 (Cathode)
-                                                                    │
-                                                    6N139 Pin 8 (Vcc) ── +5V
-                                                    6N139 Pin 7 (Vb)  ── via 4.7–10kΩ to GND
-                                                    6N139 Pin 6 (Output) ── via 220Ω pull-up to +3V3
-                                                                          └──► ESP32 GPIO15 (RX2)
-                                                    6N139 Pin 5 (GND) ── GND (ESP32 side)
-```
+Full wiring: [schematic](hardware/kicad/BarSync/BarSync_schematic.pdf),
+parts: [`BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md).
 
-- DIN-5 pin 2 = shield/not connected (depending on the socket)
-- The 5V supply for the optocoupler can come separately or from the
-  ESP32's VIN, depending on your power setup — GND must be common in
-  either case.
-- The base resistor at pin 7 (Vb) is important for clean, fast edges
-  with MIDI clock (24 PPQN) — without it, clock ticks can be lost or
-  stop messages can be misinterpreted.
+> The base resistor at pin 7 (Vb) is important for clean, fast edges with
+> MIDI clock (24 PPQN) — without it, clock ticks can be lost or stop
+> messages can be misinterpreted.
 
 ---
 
 ## 3. MIDI-THRU (Buffered Forwarding, 7406/74LS05)
 
-**Components:**
-- 1× 7406 or 74LS05 (hex inverter, open-collector output)
-- 1× DIN-5 socket (additional, for Thru)
-- 1× 220Ω resistor (pull-up for the new Thru current loop)
-- 1× DIP-14 socket (recommended)
+U1 pin 6 (optocoupler output, = same node as GPIO15) feeds a gate input
+of U2 (7406/74LS05, hex inverter with open-collector output); its output
+drives the THRU socket (pin 5 signal, pin 4 pull-up via a 220Ω resistor
+R4 to +5V, pin 2 not connected). Unused gates (5 of 6) are left open or
+tied to GND (follow the datasheet recommendation). Uses no ESP32 pin.
 
-**Wiring:**
-
-```
-6N139 Pin 6 (Output, = same node as GPIO15) ──► 7406 Input (e.g. Pin 1)
-                                                          │
-                                                    7406 Output (Pin 2, Open Collector)
-                                                          │
-                                     ──────────────────────────────────► THRU Socket Pin 5
-+5V ──[220Ω]──────────────────────────────────────────────────────────► THRU Socket Pin 4
-                                                    THRU Socket Pin 2 ── not connected
-```
-
-- Unused gates of the 7406 (5 of 6 remain free) can be left open or
-  tied to GND (follow the datasheet recommendation)
+Full wiring: [schematic](hardware/kicad/BarSync/BarSync_schematic.pdf).
 
 ---
 
@@ -99,7 +81,7 @@ MIDI-IN (DIN-5, Pin 5) ───────────────────
 | Function            | ESP32 Pin | GPIO | Wiring                          |
 |----------------------|-----------|------|----------------------------------|
 | Toggle grid           | GPIO33    | 33   | Button to GND, INPUT_PULLUP     |
-| Toggle time signature| GPIO32    | 32   | Button to GND, INPUT_PULLUP     |
+| Custom button (freely assignable, currently: SET 1.1) | GPIO32    | 32   | Button to GND, INPUT_PULLUP     |
 | Reset (short/long)   | GPIO25    | 25   | Button to GND, INPUT_PULLUP     |
 
 All three buttons (normally-open): one pin to the listed GPIO, the other
@@ -121,7 +103,7 @@ no external resistors needed.)
 | 21   | OLED DC               |
 | 23   | OLED MOSI             |
 | 25   | Reset button          |
-| 32   | Time signature button |
+| 32   | Custom button (currently: SET 1.1) |
 | 33   | Grid button           |
 | 3V3  | Display VCC           |
 | GND  | Display GND, optocoupler GND (common ground!) |

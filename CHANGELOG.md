@@ -2,6 +2,34 @@
 
 *[English version](https://github.com/barna81/BarSync/blob/main/CHANGELOG.en.md)*
 
+## Hardware Rev. 1.2 (17.09.2026)
+
+**D1 von Serien- auf Antiparallel-Schutzdiode umverdrahtet.** D1 (1N4148)
+lag bisher in Serie im MIDI-Eingangspfad (bislang als "Vorwiderstand-
+Diode" geführt); jetzt liegt sie gegenphasig parallel zum Eingangs-LED
+des Optokopplers U1 (6N139) — Anode von D1 auf dem Netz von U1 Pin 3
+(Kathode des Opto-LEDs), Kathode von D1 auf dem Netz von U1 Pin 2
+(Anode des Opto-LEDs, über R1/220Ω). D1 sperrt dadurch im Normalbetrieb
+vollständig und greift nur bei einer verpolten oder negativen
+Spannungsspitze am MIDI-Eingang, um das Opto-LED vor Überschreiten
+seiner Sperrspannung zu schützen — ohne den zusätzlichen
+Vorwärts-Spannungsabfall im Signalpfad, den die bisherige
+Serienschaltung verursacht hat.
+
+Zusätzlich wurde D1 auf dem PCB physisch versetzt (neue Footprint-
+Position) und mehrere GND-Leiterbahnen um U1 herum in der Breite
+angepasst, um die neue Verdrahtung sauber zu routen; Gerber-Dateien
+wurden entsprechend neu exportiert.
+
+Betrifft: `hardware/kicad/BarSync/BarSync.kicad_sch`,
+`BarSync.kicad_pcb`, `BarSync.net`, `hardware/kicad/BarSync/gerbers/*`.
+Die separate `BarSync_Thru4.kicad_sch` (4-fach-MIDI-Thru-Variante, noch
+in Arbeit) ist von dieser Änderung nicht betroffen und nicht Teil dieses
+Releases. BOM-Beschreibung von D1 ("MIDI-IN Vorwiderstand-Diode") war
+durch diese Änderung veraltet und ist jetzt angepasst.
+
+---
+
 ## Firmware v1.3.1 (16.09.2026)
 
 **Spielzeit- und Takt-Zähler-Grenzen erweitert.** Die Spielzeit-Anzeige
