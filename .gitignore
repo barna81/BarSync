@@ -28,6 +28,7 @@ _autosave-*
 *.hex
 *.elf
 *.bin
+!docs/flash/firmware/*.bin
 build/
 .pio/
 
