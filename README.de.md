@@ -127,6 +127,17 @@ Erster Aufbau mit der neuen Paltine!
 
 ## Firmware flashen
 
+### 1. Web-Flasher (empfohlen)
+
+Direkt im Browser, ganz ohne Arduino IDE und ohne Treiber-Installation — funktioniert in Chrome oder Edge (Windows/macOS/Linux):
+
+**[barna81.github.io/BarSync/flash](https://barna81.github.io/BarSync/flash/)**
+
+### 2. Manuelles Flashen (Arduino IDE)
+
+Für alle, die lieber selbst kompilieren wollen, oder deren Browser den Web-Flasher nicht unterstützt (z. B. Safari, Firefox). Ausführliche Schritt-für-Schritt-Anleitung inkl. USB-Treiber-Installation: siehe **Kapitel 8 „Firmware flashen"** in der [Aufbauanleitung](hardware/BarSync_Aufbauanleitung.md).
+
+Kurzfassung:
 1. Arduino IDE installieren, ESP32-Boardunterstützung hinzufügen
 2. Bibliotheken installieren: [**"MIDI Library"**](https://github.com/FortySevenEffects/arduino_midi_library) (FortySevenEffects), [**"U8g2"**](https://github.com/olikraus/u8g2) (olikraus)
 3. [`firmware/barsync.ino`](firmware/barsync.ino) öffnen, Board "ESP32 Dev Module" wählen, hochladen

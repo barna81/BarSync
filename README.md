@@ -126,6 +126,17 @@ First build with the new PCB!
 
 ## Flashing the Firmware
 
+### 1. Web Flasher (recommended)
+
+Right from your browser, no Arduino IDE, no driver install — works in Chrome or Edge (Windows/macOS/Linux):
+
+**[barna81.github.io/BarSync/flash](https://barna81.github.io/BarSync/flash/)**
+
+### 2. Manual Flashing (Arduino IDE)
+
+For anyone who prefers to compile it themselves, or whose browser doesn't support the web flasher (e.g. Safari, Firefox). Detailed step-by-step instructions incl. USB driver install: see **Chapter 8 "Flash the Firmware"** in the [Assembly Guide](hardware/BarSync_Aufbauanleitung.en.md).
+
+Short version:
 1. Install the Arduino IDE, add ESP32 board support
 2. Install libraries: [**"MIDI Library"**](https://github.com/FortySevenEffects/arduino_midi_library) (FortySevenEffects), [**"U8g2"**](https://github.com/olikraus/u8g2) (olikraus)
 3. Open [`firmware/barsync.ino`](firmware/barsync.ino), select board "ESP32 Dev Module", upload
