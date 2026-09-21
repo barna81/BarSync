@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-#define FW_VERSION "1.3.1"
+#define FW_VERSION "1.3.2"
 
 // Wird vom CI-Workflow beim Bauen ueber den Git-Tag gesetzt
 // (-DBARSYNC_BUILD_TAG=...); bei einem lokalen Build in der Arduino IDE
