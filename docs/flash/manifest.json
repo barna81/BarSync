@@ -1,6 +1,6 @@
 {
   "name": "BarSync",
-  "version": "auto",
+  "version": "1.3.1 (Build v1.3.1-citest1)",
   "builds": [
     {
       "chipFamily": "ESP32",
