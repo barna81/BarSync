@@ -181,7 +181,11 @@
     document.getElementById('unsupported-de').style.display = 'block';
     document.getElementById('unsupported-en').style.display = 'block';
   }
-  fetch('./manifest.json')
+  var manifestUrl = './manifest.json?t=' + Date.now();
+  document.querySelectorAll('esp-web-install-button').forEach(function (btn) {
+    btn.setAttribute('manifest', manifestUrl);
+  });
+  fetch(manifestUrl, { cache: 'no-store' })
     .then(function (r) { return r.json(); })
     .then(function (m) {
       var v = m.version || '?';
