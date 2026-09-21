@@ -2,6 +2,31 @@
 
 *[English version](https://github.com/barna81/BarSync/blob/main/CHANGELOG.en.md)*
 
+## Firmware v1.3.2 (22.09.2026)
+
+**Browser-basierter Firmware-Flasher eingeführt.** Firmware kann jetzt
+direkt im Browser (Chrome/Edge) geflasht werden, ganz ohne Arduino IDE
+und ohne manuelle Treiber-Installation:
+https://barna81.github.io/BarSync/flash/. Ein GitHub-Actions-Workflow
+baut bei jedem Versions-Tag automatisch eine fertige, geflashte Binary
+(kompiliert mit fest gepinnten Toolchain-Versionen: esp32-Core 3.3.12,
+MIDI Library 5.0.2, U8g2 2.36.19) und veröffentlicht sie sowohl als
+GitHub-Release-Anhang als auch same-origin neben der Flash-Seite
+selbst. Die manuelle Route über die Arduino IDE bleibt weiterhin
+verfügbar (siehe Kapitel 8 der Aufbauanleitung) und ist jetzt in der
+README entsprechend als Alternative aufgeführt.
+
+Diese Version enthält keine funktionalen Änderungen an der Firmware
+selbst — `FW_VERSION` wurde ausschließlich angehoben, um den
+kompletten Release-Workflow (Tag → automatischer Build → Release →
+Flash-Seite) einmal end-to-end mit einer echten Versionsnummer zu
+bestätigen.
+
+Betrifft: `.github/workflows/build-firmware.yml`, `docs/flash/*`,
+`README.md`/`.de.md`.
+
+---
+
 ## Hardware Rev. 1.2 (17.09.2026)
 
 **D1 von Serien- auf Antiparallel-Schutzdiode umverdrahtet.** D1 (1N4148)
