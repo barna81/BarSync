@@ -53,13 +53,22 @@ jobs:
           echo "== Libraries =="
           arduino-cli lib list
 
+      - name: Sketch-Ordner fuer arduino-cli vorbereiten
+        run: |
+          # arduino-cli verlangt, dass der Sketch-Ordner genauso heisst wie
+          # die .ino-Datei darin (Arduino-Sketch-Konvention). Im Repo liegt
+          # barsync.ino aber im Ordner "firmware" -- deshalb hier eine Kopie
+          # in einen korrekt benannten Ordner, ohne das Repo selbst anzufassen.
+          mkdir -p /tmp/sketch/barsync
+          cp firmware/barsync.ino /tmp/sketch/barsync/barsync.ino
+
       - name: Firmware kompilieren
         run: |
           arduino-cli compile \
             --fqbn esp32:esp32:esp32doit-devkit-v1 \
             --export-binaries \
             --build-path firmware/build \
-            firmware/barsync.ino
+            /tmp/sketch/barsync
 
       - name: Build-Ausgabe anzeigen
         run: ls -la firmware/build
