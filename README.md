@@ -16,14 +16,19 @@ displays bar position, beat progress, tempo, and elapsed play time on a
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (as of 2026-09-16)
+## Status (as of 2026-09-22)
 
 BarSync - Desktop version (this device) 
-- Current firmware: 1.3.1  
-Improvements: SCROLL mode with a much clearer sense of motion (stripe
-pattern + marker halo), extended bar/playtime counter limits, grid
-counter/BPM detection now keep running seamlessly in the background,
-various button-combo bug fixes
+- Current firmware: 1.3.2  
+Improvements: introduced a browser-based firmware flasher — firmware
+can now be flashed straight from the browser (Chrome/Edge), no Arduino
+IDE needed, see the "Flashing the Firmware" section below; no
+functional firmware changes
+- Firmware: 1.3.1  
+    Improvements: SCROLL mode with a much clearer sense of motion (stripe
+    pattern + marker halo), extended bar/playtime counter limits, grid
+    counter/BPM detection now keep running seamlessly in the background,
+    various button-combo bug fixes
 - Firmware: 1.3.0  
     New features: Marker Editor (place your own markers on the bar grid), two grid display modes (CYCLE/SCROLL), End Bar (loop/stop/continue the count at a defined bar)
 - Schematic, PCB layout (hardware rev. 1.2), and firmware finished and tested

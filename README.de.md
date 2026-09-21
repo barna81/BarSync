@@ -16,14 +16,19 @@ einem 128×64-OLED-Display anzeigt.
 ![BarSync](images/barsync_pic2.jpeg)
 
 
-## Status (Stand 16.09.2026)
+## Status (Stand 22.09.2026)
 
 BarSync - Desktopversion (dieses Gerät)
-- Aktueller FW Stand 1.3.1  
-Verbesserungen: SCROLL-Modus mit deutlich klarerer Bewegungsanzeige
-(Streifenmuster + Marker-Halo), erweiterte Takt-/Spielzeit-Zähler-Grenzen,
-Grid-Zähler/BPM-Erkennung laufen jetzt nahtlos im Hintergrund weiter, diverse
-Bugfixes bei Tastenkombinationen
+- Aktueller FW Stand 1.3.2  
+Verbesserungen: Browser-basierter Firmware-Flasher eingeführt — Firmware
+lässt sich jetzt direkt im Browser flashen (Chrome/Edge), ganz ohne
+Arduino IDE, siehe Abschnitt "Firmware flashen" weiter unten; keine
+funktionalen Änderungen an der Firmware selbst
+- FW Stand 1.3.1  
+    Verbesserungen: SCROLL-Modus mit deutlich klarerer Bewegungsanzeige
+    (Streifenmuster + Marker-Halo), erweiterte Takt-/Spielzeit-Zähler-Grenzen,
+    Grid-Zähler/BPM-Erkennung laufen jetzt nahtlos im Hintergrund weiter, diverse
+    Bugfixes bei Tastenkombinationen
 - FW Stand 1.3.0  
     Neue Funktionen: Marker-Editor (eigene Marker im Bar-Grid setzen), zwei Grid-Darstellungsmodi (CYCLE/SCROLL), End Bar (Zählung bei einem definierten Takt loopen/stoppen/weiterlaufen lassen)
 - Schaltplan, PCB-Layout (Hardware-Rev. 1.2) und Firmware fertig und getestet
