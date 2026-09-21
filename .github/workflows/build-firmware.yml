@@ -47,6 +47,7 @@ jobs:
             --fqbn esp32:esp32:esp32doit-devkit-v1 \
             --export-binaries \
             --build-path firmware/build \
+            --build-property "build.extra_flags=-DBARSYNC_BUILD_TAG=\"${GITHUB_REF_NAME}\"" \
             /tmp/sketch/barsync
 
       - name: Build-Ausgabe anzeigen

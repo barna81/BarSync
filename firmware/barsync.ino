@@ -30,6 +30,13 @@
 
 #define FW_VERSION "1.3.1"
 
+// Wird vom CI-Workflow beim Bauen ueber den Git-Tag gesetzt
+// (-DBARSYNC_BUILD_TAG=...); bei einem lokalen Build in der Arduino IDE
+// bleibt es beim Fallback "local".
+#ifndef BARSYNC_BUILD_TAG
+#define BARSYNC_BUILD_TAG "local"
+#endif
+
 
 #include <MIDI.h>
 #include <U8g2lib.h>
@@ -4129,7 +4136,10 @@ void runOperationSetupMenu(bool freshFromMainScreen = true) {
 void setup() {
   Serial.begin(115200);
   Serial.print("BarSync — Firmware Version ");
-  Serial.println(FW_VERSION);
+  Serial.print(FW_VERSION);
+  Serial.print(" (Build: ");
+  Serial.print(BARSYNC_BUILD_TAG);
+  Serial.println(")");
 
   // WiFi and Bluetooth are not needed anywhere - disable explicitly
   // for minimal power consumption (relevant especially on battery power).
