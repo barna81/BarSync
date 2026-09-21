@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  *  BARSYNC — MIDI Clock Bar Counter & Visualizer — ESP32 + SSD1309 OLED (SPI, 128x64)
- *  Version: 1.3.1
+ *  Version: 1.3.2
  * ============================================================================
  *
  * Counts incoming MIDI clock (24 PPQN), derives beat/bar from it, and shows
