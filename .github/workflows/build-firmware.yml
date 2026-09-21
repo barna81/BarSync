@@ -22,12 +22,12 @@ jobs:
         run: |
           arduino-cli config init --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+          arduino-cli core install esp32:esp32@3.3.12
 
       - name: Libraries installieren
         run: |
-          arduino-cli lib install "MIDI Library"
-          arduino-cli lib install "U8g2"
+          arduino-cli lib install "MIDI Library@5.0.2"
+          arduino-cli lib install "U8g2@2.36.19"
 
       - name: Aufgeloeste Versionen anzeigen (fuer spaeteres Pinnen)
         run: |
