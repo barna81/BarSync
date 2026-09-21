@@ -74,3 +74,15 @@ jobs:
         with:
           files: barsync-merged.bin
           fail_on_unmatched_files: true
+
+      - name: Same-Origin-Kopie fuer die Flash-Seite aktualisieren
+        run: |
+          git fetch origin main
+          git checkout main
+          mkdir -p docs/flash/firmware
+          cp barsync-merged.bin docs/flash/firmware/barsync-merged.bin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/flash/firmware/barsync-merged.bin
+          git commit -m "Update flashable firmware binary (${GITHUB_REF_NAME})" || echo "Keine Aenderung"
+          git push origin main
