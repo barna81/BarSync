@@ -66,17 +66,52 @@ Required hardware (see `BarSync_BOM_en.md`/`.csv`):
 
 ## 8. Flash the Firmware
 
-15. Open `barsync.ino` in the Arduino IDE
-16. Board: select **ESP32 Dev Module**
-17. Install libraries (if not done already): **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
-18. Upload
+This section is deliberately detailed — including for anyone who has never worked with the Arduino IDE before.
+
+15. **Install the Arduino IDE** (if not already installed): download the current version from https://www.arduino.cc/en/software and install it
+16. **Add ESP32 board support**:
+    - Open the Arduino IDE
+    - File → Preferences (Windows) or Arduino IDE → Settings (Mac)
+    - In the "Additional boards manager URLs" field, enter: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+    - Click OK
+    - Tools → Board → Boards Manager → search for "esp32" → install the **"esp32 by Espressif Systems"** package (takes a few minutes, it's fairly large)
+17. **Select the board**: Tools → Board → esp32 → **ESP32 Dev Module**
+18. **Install the libraries** (if not done already): Sketch → Include Library → Manage Libraries → search for and install **"MIDI Library"** (FortySevenEffects) and **"U8g2"** (olikraus)
+19. Connect the board to the computer via USB cable
+20. **If no port shows up under Tools → Port**: the USB driver for the board's chip is probably missing — see the "Install the USB driver" box right below
+21. **Select the port**: Tools → Port → choose the matching port (Windows: e.g. `COM3`; Mac: e.g. `/dev/cu.usbserial-...` or `/dev/cu.SLAB_USBtoUART`)
+22. Open `barsync.ino` (located in the `firmware/barsync/` folder in the repo)
+23. **Upload**: click the arrow button in the top-left of the Arduino IDE. If the upload fails with a timeout: set Tools → Upload Speed to `115200` and try again
+
+> ### Install the USB driver (only needed if no port shows up)
+>
+> Most ESP32 boards use a **CP2102** USB chip for the USB connection. For the computer to recognize the board as a serial port, it needs a driver for that chip — this isn't included by default in Windows or macOS.
+>
+> **Windows:**
+> 1. Open https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers in your browser
+> 2. Scroll to "Downloads", download the **"CP210x Windows Drivers"** (ZIP file)
+> 3. Extract the ZIP file (right-click → Extract All)
+> 4. In the extracted folder, run the included `.exe` installer if there is one. If there isn't: open the Windows Device Manager (right-click the Start menu → Device Manager) → look for the board under "Other devices" or "Ports (COM & LPT)" (often shown with a warning icon) → right-click it → "Update driver" → "Browse my computer for drivers" → select the extracted folder
+> 5. Unplug and replug the board's USB cable
+> 6. A COM port should now appear under Tools → Port in the Arduino IDE (e.g. `COM3`)
+>
+> **Mac:**
+> 1. Open https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers in your browser
+> 2. Scroll to "Downloads", download the **"CP210x VCP Mac OSX Driver"** (ZIP containing a `.pkg` installer)
+> 3. Unzip it, double-click the `.pkg` file and follow the installation steps
+> 4. macOS blocks newly installed system extensions by default — right after installation you'll usually see a "System Extension Blocked" notice. Then: open System Settings → Privacy & Security, scroll to the bottom where a notice about the blocked extension from "Silicon Laboratories" appears → click "Allow"
+> 5. Restart the Mac (macOS requires this after installing a kernel extension)
+> 6. Reconnect the board via USB
+> 7. An entry like `/dev/cu.SLAB_USBtoUART` or `/dev/cu.usbserial-...` should now appear under Tools → Port in the Arduino IDE
+>
+> If your board instead has a **CH340/CH341** chip (usually printed directly on the small IC next to the USB connector), you'll need the matching **WCH CH340 driver** instead of the CP210x one — same idea, different download source (manufacturer: WCH).
 
 ## 9. First Functional Test — Before Closing the Enclosure
 
-19. On startup, the display should show the boot screen ("BarSync")
-20. Connect a MIDI source, start the clock → the display should switch to "RUN"
-21. Test all three buttons individually (trigger the Custom button — currently: SET 1.1 —, change Grid, trigger Reset)
-22. Only once everything works: screw the top and bottom enclosure halves together with 4× M3×12 socket-head screws
+24. On startup, the display should show the boot screen ("BarSync")
+25. Connect a MIDI source, start the clock → the display should switch to "RUN"
+26. Test all three buttons individually (trigger the Custom button — currently: SET 1.1 —, change Grid, trigger Reset)
+27. Only once everything works: screw the top and bottom enclosure halves together with 4× M3×12 socket-head screws
 
 ---
 

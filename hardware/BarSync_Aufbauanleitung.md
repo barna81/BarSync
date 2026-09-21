@@ -66,17 +66,52 @@ Benötigtes Befestigungsmaterial (siehe `BarSync_BOM.md`/`.csv`):
 
 ## 8. Firmware flashen
 
-15. `barsync.ino` in der Arduino-IDE öffnen
-16. Board: **ESP32 Dev Module** auswählen
-17. Bibliotheken installieren (falls noch nicht geschehen): **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
-18. Hochladen
+Dieser Abschnitt ist bewusst ausführlich gehalten — auch für alle, die noch nie mit der Arduino-IDE gearbeitet haben.
+
+15. **Arduino IDE installieren** (falls noch nicht vorhanden): aktuelle Version von https://www.arduino.cc/en/software herunterladen und installieren
+16. **ESP32-Boardunterstützung hinzufügen**:
+    - Arduino IDE öffnen
+    - Datei → Voreinstellungen (Windows) bzw. Arduino IDE → Einstellungen (Mac)
+    - Feld "Zusätzliche Boardverwalter-URLs" → eintragen: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+    - Mit OK bestätigen
+    - Tools → Board → Boardverwalter (Boards Manager) → nach "esp32" suchen → Paket **"esp32 by Espressif Systems"** installieren (dauert ein paar Minuten, ist recht groß)
+17. **Board auswählen**: Tools → Board → esp32 → **ESP32 Dev Module**
+18. **Bibliotheken installieren** (falls noch nicht geschehen): Sketch → Bibliothek einbinden → Bibliotheken verwalten → **"MIDI Library"** (FortySevenEffects) und **"U8g2"** (olikraus) suchen und jeweils installieren
+19. Board per USB-Kabel mit dem Rechner verbinden
+20. **Falls unter Tools → Port kein Port auftaucht**: fehlt vermutlich der USB-Treiber für den Chip auf dem Board — siehe Kasten "USB-Treiber installieren" direkt unten
+21. **Port auswählen**: Tools → Port → passenden Port wählen (Windows: z. B. `COM3`; Mac: z. B. `/dev/cu.usbserial-...` oder `/dev/cu.SLAB_USBtoUART`)
+22. `barsync.ino` öffnen (liegt im Ordner `firmware/barsync/` im Repo)
+23. **Hochladen**: Pfeil-Button oben links in der Arduino-IDE klicken. Bricht der Upload mit Timeout ab: Tools → Upload Speed auf `115200` stellen und erneut versuchen
+
+> ### USB-Treiber installieren (nur nötig, falls kein Port erscheint)
+>
+> Die meisten ESP32-Boards verwenden einen **CP2102**-USB-Chip für die USB-Verbindung. Damit der Rechner das Board als seriellen Port erkennt, braucht es dafür einen Treiber — der ist nicht automatisch in Windows oder macOS enthalten.
+>
+> **Windows:**
+> 1. https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers im Browser öffnen
+> 2. Zu "Downloads" scrollen, die **"CP210x Windows Drivers"** (ZIP-Datei) herunterladen
+> 3. ZIP-Datei entpacken (Rechtsklick → Alle extrahieren)
+> 4. Im entpackten Ordner die enthaltene `.exe`-Installationsdatei ausführen, falls vorhanden. Ist keine dabei: Windows-Gerätemanager öffnen (Rechtsklick auf Start-Menü → Geräte-Manager) → unter "Andere Geräte" oder "Anschlüsse (COM & LPT)" das Board suchen (oft mit Warnsymbol) → rechtsklicken → "Treiber aktualisieren" → "Auf dem Computer nach Treibersoftware suchen" → den entpackten Ordner auswählen
+> 5. Board kurz aus- und wieder einstecken (USB-Kabel abziehen und neu verbinden)
+> 6. In der Arduino-IDE unter Tools → Port sollte jetzt ein COM-Port erscheinen (z. B. `COM3`)
+>
+> **Mac:**
+> 1. https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers im Browser öffnen
+> 2. Zu "Downloads" scrollen, die **"CP210x VCP Mac OSX Driver"** herunterladen (ZIP mit `.pkg`-Installer drin)
+> 3. ZIP entpacken, die `.pkg`-Datei doppelklicken und den Installationsschritten folgen
+> 4. macOS blockiert neu installierte Systemerweiterungen standardmäßig — meist erscheint direkt nach der Installation ein Hinweis "Systemerweiterung blockiert". Dann: Systemeinstellungen → Datenschutz & Sicherheit öffnen, ganz unten auf der Seite erscheint ein Hinweis auf die blockierte Erweiterung von "Silicon Laboratories" → auf "Zulassen" klicken
+> 5. Mac neu starten (macOS verlangt das nach der Installation einer Kernel-Erweiterung)
+> 6. Board per USB wieder anschließen
+> 7. In der Arduino-IDE unter Tools → Port sollte jetzt ein Eintrag wie `/dev/cu.SLAB_USBtoUART` oder `/dev/cu.usbserial-...` erscheinen
+>
+> Falls dein Board stattdessen einen **CH340/CH341**-Chip hat (steht meist direkt auf dem kleinen IC neben dem USB-Anschluss aufgedruckt), brauchst du statt des CP210x-Treibers den passenden **WCH-CH340-Treiber** — gleiches Prinzip, andere Downloadquelle (Hersteller: WCH).
 
 ## 9. Erster Funktionstest — vor dem schließen des Gehäuses
 
-19. Display sollte bei Start den Boot-Screen zeigen ("BarSync")
-20. MIDI-Quelle anschließen, Clock starten → Anzeige sollte auf "RUN" wechseln
-21. Alle drei Taster einzeln durchtesten (Custom-Taster auslösen — aktuell: SET 1.1 —, Grid wechseln, Reset auslösen)
-22. Erst wenn alles funktioniert: Gehäuse oberteil und Unterteil mit 4× M3×12-Inbusschrauben verschrauben
+24. Display sollte bei Start den Boot-Screen zeigen ("BarSync")
+25. MIDI-Quelle anschließen, Clock starten → Anzeige sollte auf "RUN" wechseln
+26. Alle drei Taster einzeln durchtesten (Custom-Taster auslösen — aktuell: SET 1.1 —, Grid wechseln, Reset auslösen)
+27. Erst wenn alles funktioniert: Gehäuse oberteil und Unterteil mit 4× M3×12-Inbusschrauben verschrauben
 
 ---
 

@@ -127,7 +127,7 @@ First build with the new PCB!
 ## Flashing the Firmware
 
 1. Install the Arduino IDE, add ESP32 board support
-2. Install libraries: **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
+2. Install libraries: [**"MIDI Library"**](https://github.com/FortySevenEffects/arduino_midi_library) (FortySevenEffects), [**"U8g2"**](https://github.com/olikraus/u8g2) (olikraus)
 3. Open [`firmware/barsync.ino`](firmware/barsync.ino), select board "ESP32 Dev Module", upload
 
 

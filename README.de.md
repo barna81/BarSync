@@ -128,7 +128,7 @@ Erster Aufbau mit der neuen Paltine!
 ## Firmware flashen
 
 1. Arduino IDE installieren, ESP32-Boardunterstützung hinzufügen
-2. Bibliotheken installieren: **"MIDI Library"** (FortySevenEffects), **"U8g2"** (olikraus)
+2. Bibliotheken installieren: [**"MIDI Library"**](https://github.com/FortySevenEffects/arduino_midi_library) (FortySevenEffects), [**"U8g2"**](https://github.com/olikraus/u8g2) (olikraus)
 3. [`firmware/barsync.ino`](firmware/barsync.ino) öffnen, Board "ESP32 Dev Module" wählen, hochladen
 
 

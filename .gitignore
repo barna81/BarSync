@@ -56,4 +56,5 @@ Icon?
 # ---------------------------------------------------------------------------
 # WIP: BarSync Thru4 (4-fach MIDI-Thru-Variante, noch in Arbeit, eigenes Release später)
 # ---------------------------------------------------------------------------
-BarSync_Thru4.*
+BarSync_Thru4*
+hardware/kicad/BarSync_Thru4/
