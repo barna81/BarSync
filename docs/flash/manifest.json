@@ -1,0 +1,15 @@
+{
+  "name": "BarSync",
+  "version": "auto",
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "https://github.com/barna81/BarSync/releases/latest/download/barsync-merged.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

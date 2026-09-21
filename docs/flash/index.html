@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BarSync Firmware Flasher</title>
+<script type="module" src="https://cdn.jsdelivr.net/npm/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --text: #e8eaee;
+    --muted: #9aa0ac;
+    --accent: #4fd1a5;
+    --border: #262b35;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  main {
+    width: 100%;
+    max-width: 640px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  header img { height: 28px; }
+  .lang-toggle button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .lang-toggle button.active {
+    color: var(--text);
+    border-color: var(--accent);
+  }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { line-height: 1.55; color: var(--muted); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 24px;
+  }
+  ol { color: var(--muted); line-height: 1.7; padding-left: 20px; }
+  esp-web-install-button {
+    display: block;
+    margin: 20px 0 4px;
+  }
+  esp-web-install-button button {
+    background: var(--accent);
+    color: #06231a;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .unsupported {
+    display: none;
+    background: #2a1c1c;
+    border: 1px solid #5a2f2f;
+    color: #f2b8b8;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 16px;
+  }
+  .hidden { display: none !important; }
+  footer {
+    margin-top: 32px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="../../images/BarSync_logo_white.svg" alt="BarSync">
+    <div class="lang-toggle">
+      <button id="btn-de" class="active" onclick="setLang('de')">DE</button>
+      <button id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+  </header>
+
+  <div id="lang-de">
+    <h1>BarSync Firmware flashen</h1>
+    <p>
+      Direkt im Browser, ohne Arduino IDE und ohne Treiber-Installation.
+      Funktioniert in Chrome oder Edge (Desktop, Windows/macOS/Linux/ChromeOS).
+    </p>
+    <div class="panel">
+      <ol>
+        <li>BarSync per USB-Kabel mit dem Rechner verbinden</li>
+        <li>Unten auf „Installieren&quot; klicken und den passenden seriellen Port auswaehlen</li>
+        <li>Kurz warten, bis der Flash-Vorgang abgeschlossen ist — das Geraet startet danach automatisch neu</li>
+      </ol>
+      <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
+      <div id="unsupported-de" class="unsupported">
+        Dein Browser unterstuetzt WebSerial nicht. Bitte diese Seite in
+        Chrome oder Edge auf einem Desktop-Rechner oeffnen — oder alternativ
+        klassisch ueber die Arduino IDE flashen (siehe
+        <a href="https://github.com/barna81/BarSync#readme">README</a>).
+      </div>
+    </div>
+    <footer>
+      Quelloffen auf <a href="https://github.com/barna81/BarSync">github.com/barna81/BarSync</a>.
+      Diese Seite laedt immer die neueste veroeffentlichte Firmware-Version.
+    </footer>
+  </div>
+
+  <div id="lang-en" class="hidden">
+    <h1>Flash BarSync Firmware</h1>
+    <p>
+      Right from your browser — no Arduino IDE, no driver install.
+      Works in Chrome or Edge (desktop, Windows/macOS/Linux/ChromeOS).
+    </p>
+    <div class="panel">
+      <ol>
+        <li>Connect BarSync to your computer via USB</li>
+        <li>Click "Install" below and select the matching serial port</li>
+        <li>Wait for flashing to finish — the device restarts automatically</li>
+      </ol>
+      <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
+      <div id="unsupported-en" class="unsupported">
+        Your browser doesn't support WebSerial. Please open this page in
+        Chrome or Edge on a desktop computer — or flash the classic way via
+        the Arduino IDE (see the
+        <a href="https://github.com/barna81/BarSync#readme">README</a>).
+      </div>
+    </div>
+    <footer>
+      Open source at <a href="https://github.com/barna81/BarSync">github.com/barna81/BarSync</a>.
+      This page always installs the latest published firmware release.
+    </footer>
+  </div>
+</main>
+
+<script>
+  function setLang(lang) {
+    document.getElementById('lang-de').classList.toggle('hidden', lang !== 'de');
+    document.getElementById('lang-en').classList.toggle('hidden', lang !== 'en');
+    document.getElementById('btn-de').classList.toggle('active', lang === 'de');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    localStorage.setItem('barsync-flash-lang', lang);
+  }
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('barsync-flash-lang'); } catch (e) {}
+    if (saved === 'en') setLang('en');
+  })();
+  if (!('serial' in navigator)) {
+    document.getElementById('unsupported-de').style.display = 'block';
+    document.getElementById('unsupported-en').style.display = 'block';
+  }
+</script>
+</body>
+</html>

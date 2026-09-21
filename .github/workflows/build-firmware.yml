@@ -1,0 +1,93 @@
+name: Build & Release Firmware
+
+# Baut firmware/barsync.ino bei jedem Versions-Tag (z.B. "v1.3.1") mit
+# fest gepinnten Toolchain-Versionen und haengt eine fertig geflashte
+# Merged-Binary an das GitHub Release an. Diese Binary ist das, was
+# docs/flash/manifest.json spaeter zum Browser-Flashen verwendet.
+#
+# WICHTIG (einmalig nach dem ersten erfolgreichen Lauf):
+# Im Log von "Zeige aufgeloeste Versionen" stehen die tatsaechlich
+# installierten Core-/Library-Versionen. Diese Werte hier unten bei
+# core install / lib install eintragen (statt "latest"), damit
+# spaetere Builds nicht durch neue, moeglicherweise inkompatible
+# Versionen ueberrascht werden. Bis dahin baut der Workflow bewusst
+# mit den jeweils neuesten Versionen, damit ueberhaupt ein erster
+# Referenzwert entsteht.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: arduino-cli installieren
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: ESP32-Board-Core installieren
+        run: |
+          arduino-cli config init --additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          # TODO: nach erstem gruenen Lauf auf exakte Version pinnen, z.B.:
+          #   arduino-cli core install esp32:esp32@3.1.3
+          arduino-cli core install esp32:esp32
+
+      - name: Libraries installieren
+        run: |
+          # TODO: nach erstem gruenen Lauf auf exakte Versionen pinnen, z.B.:
+          #   arduino-cli lib install "MIDI Library@5.0.2"
+          #   arduino-cli lib install "U8g2@2.36.5"
+          arduino-cli lib install "MIDI Library"
+          arduino-cli lib install "U8g2"
+
+      - name: Aufgeloeste Versionen anzeigen (fuer spaeteres Pinnen)
+        run: |
+          echo "== Board-Core =="
+          arduino-cli core list
+          echo "== Libraries =="
+          arduino-cli lib list
+
+      - name: Firmware kompilieren
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32doit-devkit-v1 \
+            --export-binaries \
+            --build-path firmware/build \
+            firmware/barsync.ino
+
+      - name: Build-Ausgabe anzeigen
+        run: ls -la firmware/build
+
+      - name: Einzelbinary zusammenfuehren (merge_bin)
+        run: |
+          pip install --quiet esptool
+          BD=firmware/build
+          if [ -f "$BD"/barsync.ino.merged.bin ]; then
+            # Neuere arduino-esp32-Cores exportieren die gemergte Binary
+            # bereits fertig -- dann einfach uebernehmen.
+            cp "$BD"/barsync.ino.merged.bin barsync-merged.bin
+          else
+            # Aeltere Cores: manuell zusammenfuehren. Offsets/Flash-Groesse
+            # gelten fuer die DOIT ESP32 DEVKIT V1 mit 4MB Flash -- bei
+            # abweichender Flash-Groesse hier --flash_size anpassen.
+            BOOTAPP0=$(find "$HOME"/.arduino15 -name boot_app0.bin | head -1)
+            python3 -m esptool --chip esp32 merge_bin -o barsync-merged.bin \
+              --flash_mode dio --flash_freq 40m --flash_size 4MB \
+              0x1000  "$BD"/barsync.ino.bootloader.bin \
+              0x8000  "$BD"/barsync.ino.partitions.bin \
+              0xe000  "$BOOTAPP0" \
+              0x10000 "$BD"/barsync.ino.bin
+          fi
+          ls -la barsync-merged.bin
+
+      - name: An GitHub Release anhaengen
+        uses: softprops/action-gh-release@v2
+        with:
+          files: barsync-merged.bin
+          fail_on_unmatched_files: true
