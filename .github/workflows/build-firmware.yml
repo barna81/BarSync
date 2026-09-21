@@ -77,7 +77,7 @@ jobs:
 
       - name: Same-Origin-Kopie fuer die Flash-Seite aktualisieren
         run: |
-          git fetch origin main
+          git fetch origin main:main --force
           git checkout main
           mkdir -p docs/flash/firmware
           cp barsync-merged.bin docs/flash/firmware/barsync-merged.bin
