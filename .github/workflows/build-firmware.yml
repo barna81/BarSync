@@ -75,6 +75,7 @@ jobs:
         with:
           files: barsync-merged.bin
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Same-Origin-Kopie fuer die Flash-Seite aktualisieren
         run: |
