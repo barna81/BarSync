@@ -58,9 +58,17 @@
     margin-top: 24px;
   }
   ol { color: var(--muted); line-height: 1.7; padding-left: 20px; }
+  .version-line {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: -4px;
+  }
+  .version-line strong {
+    color: var(--text);
+  }
   esp-web-install-button {
     display: block;
-    margin: 20px 0 4px;
+    margin: 12px 0 4px;
   }
   esp-web-install-button button {
     background: var(--accent);
@@ -113,6 +121,7 @@
         <li>Unten auf „Installieren&quot; klicken und den passenden seriellen Port auswaehlen</li>
         <li>Kurz warten, bis der Flash-Vorgang abgeschlossen ist — das Geraet startet danach automatisch neu</li>
       </ol>
+      <p class="version-line" id="version-de">Ermittle installierte Firmware-Version…</p>
       <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
       <div id="unsupported-de" class="unsupported">
         Dein Browser unterstuetzt WebSerial nicht. Bitte diese Seite in
@@ -139,6 +148,7 @@
         <li>Click "Install" below and select the matching serial port</li>
         <li>Wait for flashing to finish — the device restarts automatically</li>
       </ol>
+      <p class="version-line" id="version-en">Checking firmware version…</p>
       <esp-web-install-button manifest="./manifest.json"></esp-web-install-button>
       <div id="unsupported-en" class="unsupported">
         Your browser doesn't support WebSerial. Please open this page in
@@ -171,6 +181,17 @@
     document.getElementById('unsupported-de').style.display = 'block';
     document.getElementById('unsupported-en').style.display = 'block';
   }
+  fetch('./manifest.json')
+    .then(function (r) { return r.json(); })
+    .then(function (m) {
+      var v = m.version || '?';
+      document.getElementById('version-de').innerHTML = 'Installiert wird: <strong>' + v + '</strong>';
+      document.getElementById('version-en').innerHTML = 'This will install: <strong>' + v + '</strong>';
+    })
+    .catch(function () {
+      document.getElementById('version-de').textContent = 'Firmware-Version konnte nicht ermittelt werden.';
+      document.getElementById('version-en').textContent = 'Could not determine firmware version.';
+    });
 </script>
 </body>
 </html>
