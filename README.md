@@ -108,6 +108,7 @@ In short: the project is currently still in a full DIY stage. Depending on inter
 - Full [`schematic`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
 - PCB layout, and Gerber files are in [`hardware/`](hardware/)  
 - Full bill of materials: [`hardware/BarSync_BOM.en.md`](hardware/BarSync_BOM.en.md)  
+- Electronic parts as a ready-made Reichelt cart: [reichelt.de/my/2391791](https://www.reichelt.de/my/2391791)  
 - Assembly guide: [`hardware/BarSync_Aufbauanleitung.en.md`](hardware/BarSync_Aufbauanleitung.en.md)  
 - 3D-printable enclosure available here: [`enclosure`](enclosure/)
 

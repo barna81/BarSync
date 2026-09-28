@@ -43,13 +43,13 @@ Required hardware (see `BarSync_BOM_en.md`/`.csv`):
 
 - 4× Ruthex threaded insert, M3
 - 4× socket-head screw M3×12
-- 4× socket-head screw M2×4
+- 4× Phillips screw M1.7×4
 - 8× socket-head screw M2×10
 - 4× nut M2
-- 12× washer M2
+- 4× washer M2
 
 9. **Fit the PCB:** Position the PCB in the bottom half of the enclosure and screw it down with 4× M2×10 socket-head screws into the designated mount
-10. **Display:** Mount the display with 4× M2×4 socket-head screws (use 2 washers per screw to shorten the effective thread length)
+10. **Display:** Mount the display with 4× M1.7×4 Phillips screws
 11. **MIDI jacks:** Insert the MIDI jacks (mind the IN/THRU arrangement), fasten with 4× M2×10 socket-head screws, and secure from the inside with 4× M2 nuts and 4× M2 washers
 12. **Mount the buttons:** Insert the 3× buttons (Custom, Grid, Reset) into their designated openings and secure with the lock nuts
 13. **Set the threaded inserts:** Press/melt the 4× Ruthex threaded inserts (M3) into the corresponding mounts in the top half of the enclosure (set the soldering iron to roughly the material's forming temperature — e.g. 220°C for PLA)

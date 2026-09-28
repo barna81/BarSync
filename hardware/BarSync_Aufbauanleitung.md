@@ -43,13 +43,13 @@ Benötigtes Befestigungsmaterial (siehe `BarSync_BOM.md`/`.csv`):
 
 - 4× Gewindeeinsatz Ruthex, M3
 - 4× Inbusschraube M3×12
-- 4× Inbusschraube M2×4
+- 4× Kreuzschlitzschraube M1,7×4
 - 8× Inbusschraube M2×10
 - 4× Mutter M2
-- 12× Unterlegscheibe M2
+- 4× Unterlegscheibe M2
 
 9. **Platine einsetzen:** Platine im Gehäuseunterteil positionieren und mit den 4× M2×10-Inbusschrauben in der dafür vorgesehenen Aufnahme verschrauben
-10. **Display:** Display mit den M2-Inbusschrauben 4× M2×4 befestigen (jeweils 2 Unterlegscheiben benutzen um das Gewinde der Schraube zu verkürzen)
+10. **Display:** Display mit den 4× M1,7×4-Kreuzschlitzschrauben befestigen
 11. **Midi-Buchsen:** Midibuchsen einsetzen (Anordnung IN und THRU beachten), mit den 4× M2×10-Inbusschrauben verschrauben und mit 4× M2-Muttern und 4× M2-Unterlegscheiben auf der Innenseite kontern
 12. **Taster montieren:** Die 3× Taster (Custom, Grid, Reset) in die dafür vorgesehenen Öffnungen einsetzen und mit den Kontermuttern sichern
 13. **Gewindeeinsätze setzen:** Die 4× Ruthex-Gewindeeinsätze (M3) in die entsprechenden Aufnahmen des Gehäuseoberteils einpressen/einschmelzen (die Temperatur des Lötkolbens etwa auf die Drucktemperatur des Materials - bei PLA z.B. 220°C)

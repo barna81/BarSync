@@ -1,32 +1,27 @@
-Ref,Component,Value,Qty,Footprint/Type,Note
-U1,6N139,-,1,DIP-8 socketed,Optocoupler MIDI-IN
-U2,SN7406N,-,1,DIP-14 socketed,Hex inverter 2 gates in series
-D1,1N4148,-,1,DO-35 horizontal,MIDI-IN protection diode (antiparallel to U1)
-R1,Resistor,220R 1/4W,1,Axial horizontal,MIDI-IN series resistor
-R2,Resistor,4k7 1/4W,1,Axial horizontal,Vb bias resistor
-R3,Resistor,220R 1/4W,1,Axial horizontal,Pull-up optocoupler output to +3V3 (not +5V)
-R4,Resistor,220R 1/4W,1,Axial horizontal,MIDI-THRU pin 4 current loop
-C1,Capacitor,100nF X7R,1,Radial 5mm pitch,Decoupling capacitor U1
-C2,Capacitor,100nF X7R,1,Radial 5mm pitch,Decoupling capacitor U2
-J1,Header,2-pin 2.54mm,1,Vertical,Board header MIDI-IN
-J2,Header,3-pin 2.54mm,1,Vertical,Board header MIDI-THRU
-J3,Header,2-pin 2.54mm,1,Vertical,Custom Switch
-J4,Header,2-pin 2.54mm,1,Vertical,Divisor button
-J5,Header,2-pin 2.54mm,1,Vertical,Reset button
-J6,Header,7-pin 2.54mm,1,Vertical,Board header display
-A1,ESP32 (WROOM-32 DOIT-30Pin),-,1,DOIT_ESP32_DEVKIT_30Pins,Soldered directly - no socket needed
--,DIP-8 socket,-,1,-,For U1
--,DIP-14 socket,-,1,-,For U2
--,Mounting hole M2,2.2mm,4,MountingHole,Mechanical only
--,OLED display,SSD1309 2.42in 128x64 SPI,1,-,Via 7-pin cable to J6
--,DIN-5 panel-mount socket,Full metal recommended,2,-,MIDI-IN + MIDI-THRU
--,Button,Tactile switch or foot switch,3,-,Custom/divisor/reset
--,Dupont cable FF 2-pin,-,4,-,J1 + J3 + J4 + J5
--,Dupont cable FF 3-pin,-,1,-,J2
--,Dupont cable FF 7-pin,-,1,-,J6
--,Threaded insert Ruthex,M3,4,-,Enclosure assembly
--,Socket head screw,M3x12,4,-,Enclosure assembly (into threaded inserts)
--,Socket head screw,M2x4,4,-,Enclosure assembly
--,Socket head screw,M2x10,8,-,Enclosure assembly
--,Nut,M2,4,-,Enclosure assembly
--,Washer,M2,12,-,Enclosure assembly
+Ref,Component,Value,Qty,Footprint/Type,Reichelt,Note
+U1,6N139,Optocoupler,1,DIP-8 socketed,6N 139,MIDI-IN
+U2,SN7406N,Hex inverter open collector,1,DIP-14 socketed,SN 7406N TEX,MIDI-THRU driver 2 gates in series
+D1,1N4148,Switching diode,1,DO-35 horizontal,1N 4148,MIDI-IN protection diode antiparallel to U1 - mind polarity
+"R1, R3, R4",Resistor,220R,3,Axial 0207 horizontal,METALL 220,R1 MIDI-IN series resistor / R3 pull-up to +3V3 (not +5V) / R4 MIDI-THRU current loop
+R2,Resistor,4k7,1,Axial 0207 horizontal,"METALL 4,70K",Vb bias resistor
+"C1, C2",Capacitor,100nF X7R,2,Radial 5mm pitch,X7R-5 100N,Decoupling capacitors U1 / U2
+"J1, J3, J4, J5",Pin header,2-pin 2.54mm,4,Vertical,"SL 1X36G 2,54",J1 MIDI-IN / J3 Custom / J4 Grid / J5 Reset - all headers from one 36-pin strip
+J2,Pin header,3-pin 2.54mm,1,Vertical,"SL 1X36G 2,54",MIDI-THRU
+J6,Pin header,7-pin 2.54mm,1,Vertical,"SL 1X36G 2,54",Display
+A1,ESP32 DevKit (WROOM-32 DOIT 30 pins),-,1,DOIT_ESP32_DEVKIT_30Pins,-,Soldered directly - not at Reichelt (38-pin DevKitC does not fit) - Amazon https://www.amazon.de/dp/B0D8T5XD3P (ELEGOO ESP-WROOM-32)
+-,IC socket,DIP-8,1,-,GS 8P,For U1
+-,IC socket,DIP-14,1,-,GS 14P,For U2
+-,Mounting hole,M2 2.2mm,4,MountingHole,-,Mechanical only
+-,OLED display,SSD1309 2.42 inch 128x64 SPI 7-pin,1,-,-,Via 7-pin cable to J6 - Amazon https://www.amazon.de/dp/B0CJY4WP8C (Hailege)
+-,DIN-5 panel-mount socket,Flange 2 screw holes,2,-,-,MIDI-IN + MIDI-THRU - Amazon https://www.amazon.de/dp/B0D22R6Q9R
+-,Stomp footswitch SPST momentary,with lock nut,3,-,-,Custom/Grid/Reset - Amazon https://www.amazon.de/dp/B09KN9HJ7M
+-,Dupont cable FF,2-pin,4,-,(from DEBO KABELSET19),J1 + J3 + J4 + J5
+-,Dupont cable FF,3-pin,1,-,(from DEBO KABELSET19),J2
+-,Dupont cable FF,7-pin,1,-,(from DEBO KABELSET19),J6
+-,Threaded insert Ruthex,M3,4,-,-,Enclosure top
+-,Socket head screw,M3x12,4,-,-,Enclosure into threaded inserts
+-,Phillips screw,M1.7x4,4,-,-,Display
+-,Socket head screw,M2x10,8,-,-,PCB (4) + MIDI sockets (4)
+-,Nut,M2,4,-,-,MIDI sockets
+-,Washer,M2,4,-,-,MIDI sockets
+-,Ribbon jumper cable FF,40 wires 15cm,1,-,DEBO KABELSET19,Source for all Dupont connections - peel off wires as needed

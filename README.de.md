@@ -108,6 +108,7 @@ Kurz zusammengefasst: Aktuell befindet sich das Projekt noch im kompletten DIY-S
 - Vollständiger [`Schaltplan`](hardware/kicad/BarSync/BarSync_schematic.pdf)  
 - PCB-Layout und Gerber-Dateien liegen in [`hardware/`](hardware/)  
 - Vollständige Stückliste: [`hardware/BarSync_BOM.md`](hardware/BarSync_BOM.md)  
+- Elektronik-Bauteile als fertiger Reichelt-Warenkorb: [reichelt.de/my/2391791](https://www.reichelt.de/my/2391791)  
 - Aufbauanleitung: [`hardware/BarSync_Aufbauanleitung.md`](hardware/BarSync_Aufbauanleitung.md)  
 - 3D-druckbares Gehäuse liegt hier ab [`enclosure`](enclosure/)  
 

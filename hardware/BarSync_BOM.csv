@@ -1,32 +1,27 @@
-Ref,Bauteil,Wert,Menge,Footprint/Typ,Hinweis
-U1,6N139,-,1,DIP-8 Sockel,Optokoppler MIDI-IN
-U2,SN7406N,-,1,DIP-14 Sockel,Hex-Inverter 2 Gates in Reihe
-D1,1N4148,-,1,DO-35 liegend,MIDI-IN Schutzdiode (antiparallel zu U1)
-R1,Widerstand,220R 1/4W,1,Axial liegend,MIDI-IN Vorwiderstand
-R2,Widerstand,4k7 1/4W,1,Axial liegend,Vb-Ableitwiderstand
-R3,Widerstand,220R 1/4W,1,Axial liegend,Pull-up Optokoppler-Ausgang nach +3V3 (nicht +5V)
-R4,Widerstand,220R 1/4W,1,Axial liegend,MIDI-THRU Pin4 Stromschleife
-C1,Kondensator,100nF X7R,1,Radial RM5,Abblockkondensator U1
-C2,Kondensator,100nF X7R,1,Radial RM5,Abblockkondensator U2
-J1,Stiftleiste,2-polig 2.54mm,1,Vertikal,Board-Header MIDI-IN
-J2,Stiftleiste,3-polig 2.54mm,1,Vertikal,Board-Header MIDI-THRU
-J3,Stiftleiste,2-polig 2.54mm,1,Vertikal,Custom Switch
-J4,Stiftleiste,2-polig 2.54mm,1,Vertikal,Divisor-Taster
-J5,Stiftleiste,2-polig 2.54mm,1,Vertikal,Reset-Taster
-J6,Stiftleiste,7-polig 2.54mm,1,Vertikal,Board-Header Display
-A1,ESP32 (WROOM-32 DOIT-30Pin),-,1,DOIT_ESP32_DEVKIT_30Pins,Wird direkt eingeloetet - kein Sockel noetig
--,DIP-8-Sockel,-,1,-,Fuer U1
--,DIP-14-Sockel,-,1,-,Fuer U2
--,Befestigungsloch M2,2.2mm,4,MountingHole,Nur mechanisch
--,OLED-Display,SSD1309 2.42 Zoll 128x64 SPI,1,-,Via 7-pol Kabel an J6
--,DIN-5-Buchse Einbau,Vollmetall empfohlen,2,-,MIDI-IN + MIDI-THRU
--,Taster,Tact-Switch oder Fusstaster,3,-,Custom/Divisor/Reset
--,Dupont-Kabel BB 2-polig,-,4,-,J1 + J3 + J4 + J5
--,Dupont-Kabel BB 3-polig,-,1,-,J2
--,Dupont-Kabel BB 7-polig,-,1,-,J6
--,Gewindeeinsatz Ruthex,M3,4,-,Gehäusemontage
--,Inbusschraube,M3x12,4,-,Gehäusemontage (in Gewindeeinsätze)
--,Inbusschraube,M2x4,4,-,Gehäusemontage
--,Inbusschraube,M2x10,8,-,Gehäusemontage
--,Mutter,M2,4,-,Gehäusemontage
--,Unterlegscheibe,M2,12,-,Gehäusemontage
+Ref,Bauteil,Wert,Menge,Footprint/Typ,Reichelt,Hinweis
+U1,6N139,Optokoppler,1,DIP-8 gesockelt,6N 139,MIDI-IN
+U2,SN7406N,Hex-Inverter Open-Kollektor,1,DIP-14 gesockelt,SN 7406N TEX,MIDI-THRU-Treiber 2 Gatter in Reihe
+D1,1N4148,Schaltdiode,1,DO-35 liegend,1N 4148,MIDI-IN Schutzdiode antiparallel zu U1 - Polaritaet beachten
+"R1, R3, R4",Widerstand,220R,3,Axial 0207 liegend,METALL 220,R1 MIDI-IN Vorwiderstand / R3 Pull-up nach +3V3 (nicht +5V) / R4 MIDI-THRU Stromschleife
+R2,Widerstand,4k7,1,Axial 0207 liegend,"METALL 4,70K",Vb-Ableitwiderstand
+"C1, C2",Kondensator,100nF X7R,2,Radial RM5,X7R-5 100N,Abblockkondensatoren U1 / U2
+"J1, J3, J4, J5",Stiftleiste,2-polig 2.54mm,4,Vertikal,"SL 1X36G 2,54",J1 MIDI-IN / J3 Custom / J4 Grid / J5 Reset - alle Stiftleisten aus einer 36er-Leiste
+J2,Stiftleiste,3-polig 2.54mm,1,Vertikal,"SL 1X36G 2,54",MIDI-THRU
+J6,Stiftleiste,7-polig 2.54mm,1,Vertikal,"SL 1X36G 2,54",Display
+A1,ESP32 DevKit (WROOM-32 DOIT 30 Pins),-,1,DOIT_ESP32_DEVKIT_30Pins,-,Direkt eingeloetet - nicht bei Reichelt (DevKitC 38 Pins passt nicht) - Amazon https://www.amazon.de/dp/B0D8T5XD3P (ELEGOO ESP-WROOM-32)
+-,IC-Sockel,DIP-8,1,-,GS 8P,Fuer U1
+-,IC-Sockel,DIP-14,1,-,GS 14P,Fuer U2
+-,Befestigungsloch,M2 2.2mm,4,MountingHole,-,Nur mechanisch
+-,OLED-Display,SSD1309 2.42 Zoll 128x64 SPI 7-polig,1,-,-,Via 7-pol Kabel an J6 - Amazon https://www.amazon.de/dp/B0CJY4WP8C (Hailege)
+-,DIN-5-Buchse Einbau,Flansch 2 Schraubloecher,2,-,-,MIDI-IN + MIDI-THRU - Amazon https://www.amazon.de/dp/B0D22R6Q9R
+-,Stomp-Fussschalter SPST tastend,mit Kontermutter,3,-,-,Custom/Grid/Reset - Amazon https://www.amazon.de/dp/B09KN9HJ7M
+-,Dupont-Kabel BB,2-polig,4,-,(aus DEBO KABELSET19),J1 + J3 + J4 + J5
+-,Dupont-Kabel BB,3-polig,1,-,(aus DEBO KABELSET19),J2
+-,Dupont-Kabel BB,7-polig,1,-,(aus DEBO KABELSET19),J6
+-,Gewindeeinsatz Ruthex,M3,4,-,-,Gehaeuseoberteil
+-,Inbusschraube,M3x12,4,-,-,Gehaeuse in Gewindeeinsaetze
+-,Kreuzschlitzschraube,M1.7x4,4,-,-,Display
+-,Inbusschraube,M2x10,8,-,-,Platine (4) + MIDI-Buchsen (4)
+-,Mutter,M2,4,-,-,MIDI-Buchsen
+-,Unterlegscheibe,M2,4,-,-,MIDI-Buchsen
+-,Steckbrueckenkabel BB (Flachband),40 Adern 15cm,1,-,DEBO KABELSET19,Quelle fuer alle Dupont-Verbindungen - Adern je nach Polzahl abtrennen
